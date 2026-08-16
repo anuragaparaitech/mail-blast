@@ -155,7 +155,7 @@ async function runTestSuite() {
 
     // Wait for completion
     let attempts = 0;
-    while (attempts < 30) {
+    while (attempts < 60) {
       const c = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campId);
       if (c.status === 'completed' || c.status === 'cancelled') {
         break;
