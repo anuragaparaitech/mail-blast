@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Aparaitech Software &bull; Student Email Blast Web Application
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-green.svg)](https://nodejs.org)
@@ -178,3 +179,6 @@ e:/Mail blast/
 ## 🏢 Corporate Identity & Credits
 Developed for **Aparaitech Software** ([aparaitech.org](https://aparaitech.org))  
 *Recruitment Engineering Team &bull; Baramati &amp; Bengaluru, India*
+=======
+# mail-blast
+>>>>>>> 39f09aa8c2b68512baa47becb5b6ac9f78ae3e38
