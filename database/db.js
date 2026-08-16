@@ -2,8 +2,14 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const DB_PATH = path.join(__dirname, 'mailblast.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'mailblast.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+
+// Ensure database directory exists
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 // Initialize database
 let db;
