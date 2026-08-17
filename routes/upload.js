@@ -78,7 +78,7 @@ router.post('/commit', (req, res) => {
     if (validRows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No valid rows found to import. Please check that Name, Email, and College are mapped properly.'
+        message: 'No valid candidate rows found to import. Please ensure Name and Email columns are mapped properly.'
       });
     }
 
@@ -137,9 +137,10 @@ router.post('/commit', (req, res) => {
 
     res.json({
       success: true,
-      message: `Bulk import completed! Added: ${insertedCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}`,
+      message: `Bulk import completed successfully! Saved ${insertedCount + updatedCount} students to database. (Added: ${insertedCount} new, Updated: ${updatedCount}, Skipped: ${skippedCount})`,
       summary: {
         totalAttempted: validRows.length,
+        totalSaved: insertedCount + updatedCount,
         inserted: insertedCount,
         updated: updatedCount,
         skipped: skippedCount,

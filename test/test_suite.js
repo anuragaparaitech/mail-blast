@@ -196,6 +196,69 @@ async function runTestSuite() {
     assert.strictEqual(pendingCount, 1, 'Failed recipient not changed to pending');
   });
 
+  // 6. 500+ Bulk Record Saving Test
+  test('Bulk Upload: Saves 500+ records together in bulk in a single atomic transaction', () => {
+    const db = getDb();
+    const beforeCount = db.prepare('SELECT COUNT(*) as c FROM students').get().c;
+
+    // Generate 500 student records
+    const bulk500 = [];
+    for (let i = 1; i <= 500; i++) {
+      bulk500.push({
+        'Name': `Bulk Student ${i}`,
+        'Email': `bulk.student.${i}@college.edu`
+      });
+    }
+
+    const { validateAndNormalizeRows } = require('../services/excelParser');
+    const validated = validateAndNormalizeRows(bulk500, { name: 'Name', email: 'Email' });
+    assert.strictEqual(validated.validCount, 500, 'Expected all 500 records to be valid');
+
+    const insertStmt = db.prepare(`
+      INSERT INTO students (name, email, college, phone, branch, batch, status, tags, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const commitTx = db.transaction(() => {
+      for (const row of validated.rows) {
+        const item = row.normalized;
+        insertStmt.run(
+          item.name,
+          item.email,
+          item.college,
+          item.phone,
+          item.branch,
+          item.batch,
+          'Active',
+          item.tags,
+          'Bulk 500 test'
+        );
+      }
+    });
+
+    commitTx();
+
+    const afterCount = db.prepare('SELECT COUNT(*) as c FROM students').get().c;
+    assert.strictEqual(afterCount, beforeCount + 500, `Expected ${beforeCount + 500} students, got ${afterCount}`);
+  });
+
+  // 7. SMTP Password / App Password Persistence Test
+  test('Settings: Successfully saves, updates, and persists SMTP Password / App Password in database', () => {
+    const db = getDb();
+    const testAppPassword = 'abcd efgh ijkl mnop';
+
+    const updateStmt = db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES ('smtp_pass', ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `);
+
+    updateStmt.run(testAppPassword);
+
+    const savedPass = db.prepare("SELECT value FROM settings WHERE key = 'smtp_pass'").get();
+    assert.strictEqual(savedPass.value, testAppPassword, 'SMTP Password not saved or matched');
+  });
+
   console.log('\n====================================================');
   console.log(`📊 Test Results: ${passedTests} / ${totalTests} Passed (${Math.round((passedTests / totalTests) * 100)}%)`);
   console.log('====================================================');

@@ -26,7 +26,7 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const db = getDb();
-    const updates = req.body; // e.g. { mailer_mode: 'sandbox', send_delay_ms: 300, ... }
+    const updates = req.body; // e.g. { mailer_mode: 'sandbox', send_delay_ms: 300, smtp_pass: '...', ... }
 
     const updateStmt = db.prepare(`
       INSERT INTO settings (key, value, updated_at)
@@ -36,17 +36,20 @@ router.post('/', (req, res) => {
 
     const updateTx = db.transaction(() => {
       for (const [key, value] of Object.entries(updates)) {
-        // If password is sent as empty or masked without change, don't overwrite if existing
-        if (key === 'smtp_pass' && (value === '' || value === '••••••••')) {
+        if (value === undefined || value === null) continue;
+        
+        // If password is sent as masked bullet dots '••••••••' without edit, keep existing password
+        if (key === 'smtp_pass' && value === '••••••••') {
           continue;
         }
+        
         updateStmt.run(key, String(value));
       }
     });
 
     updateTx();
 
-    res.json({ success: true, message: 'Settings saved successfully!' });
+    res.json({ success: true, message: 'Settings & SMTP credentials saved successfully!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

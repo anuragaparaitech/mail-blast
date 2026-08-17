@@ -174,11 +174,13 @@ const ImportView = {
         <div class="card-header">
           <div>
             <h3 class="card-title">2. Data Validation Preview</h3>
-            <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 2px;">Review verified candidate rows before committing to database</p>
+            <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 2px;">
+              ${this.state.totalRows > 100 ? `Showing first 100 rows of ${this.state.totalRows}. ` : ''}All <strong>${this.state.validCount} valid students</strong> will be saved together in bulk.
+            </p>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <span class="badge badge-sent" style="font-size: 0.8rem; padding: 5px 12px;">✅ ${this.state.validCount} Valid</span>
-            ${this.state.invalidCount > 0 ? `<span class="badge badge-failed" style="font-size: 0.8rem; padding: 5px 12px;">⚠️ ${this.state.invalidCount} Invalid / Missing</span>` : ''}
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="badge badge-sent" style="font-size: 0.8rem; padding: 5px 12px;">✅ ${this.state.validCount} Valid &amp; Ready</span>
+            ${this.state.invalidCount > 0 ? `<span class="badge badge-failed" style="font-size: 0.8rem; padding: 5px 12px;">⚠️ ${this.state.invalidCount} Invalid</span>` : ''}
           </div>
         </div>
 
@@ -210,7 +212,7 @@ const ImportView = {
                     </td>
                     <td><strong>${norm.name}</strong></td>
                     <td style="font-family: var(--font-mono); font-size: 0.82rem;">${norm.email || '<span style="color:red;">[Empty]</span>'}</td>
-                    <td>${norm.college || '<span style="color:red;">[Empty]</span>'}</td>
+                    <td>${norm.college || '<span style="color:var(--text-muted);">General Pool</span>'}</td>
                     <td>${norm.phone || '&mdash;'}</td>
                     <td>${norm.branch}</td>
                     <td>${norm.batch}</td>
@@ -241,7 +243,7 @@ const ImportView = {
 
           <button class="btn btn-primary btn-lg" onclick="ImportView.commitImport()" ${this.state.validCount === 0 ? 'disabled' : ''}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Import ${this.state.validCount} Students to Pool</span>
+            <span>Save All ${this.state.validCount} Students to Database</span>
           </button>
         </div>
       </div>
@@ -278,25 +280,34 @@ const ImportView = {
   },
 
   async commitImport() {
-    const btn = event.currentTarget;
-    if (btn) btn.disabled = true;
+    const container = document.getElementById('importWizardStepContainer');
+    const validCount = this.state.validCount;
+
+    if (container) {
+      container.innerHTML = `
+        <div class="card" style="text-align: center; padding: 48px; max-width: 650px; margin: 0 auto;">
+          <div class="spinner" style="margin: 0 auto 20px auto; width: 44px; height: 44px;"></div>
+          <h2 style="font-family: var(--font-heading); color: var(--text-primary); margin-bottom: 8px;">Saving Data in Bulk...</h2>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">Saving all <strong>${validCount} candidate records</strong> together in bulk to database...</p>
+        </div>
+      `;
+    }
 
     try {
       const res = await api.commitSpreadsheet(this.state.rawRows, this.state.mapping, this.state.duplicateStrategy);
 
-      const container = document.getElementById('importWizardStepContainer');
       container.innerHTML = `
         <div class="card" style="text-align: center; padding: 48px; max-width: 650px; margin: 0 auto;">
           <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--color-success-bg); color: var(--color-success); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
-          <h2 style="font-family: var(--font-heading); color: var(--text-primary); margin-bottom: 8px;">Import Successfully Completed!</h2>
+          <h2 style="font-family: var(--font-heading); color: var(--text-primary); margin-bottom: 8px;">Bulk Import Successfully Completed!</h2>
           <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px;">${res.message}</p>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 32px; background: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
             <div>
               <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-success);">${res.summary.inserted}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">New Students</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">New Students Added</div>
             </div>
             <div>
               <div style="font-size: 1.3rem; font-weight: 700; color: var(--brand-sapphire);">${res.summary.updated}</div>
@@ -304,7 +315,7 @@ const ImportView = {
             </div>
             <div>
               <div style="font-size: 1.3rem; font-weight: 700; color: var(--text-muted);">${res.summary.skipped}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Skipped</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Skipped Duplicates</div>
             </div>
           </div>
 
