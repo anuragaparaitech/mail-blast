@@ -20,9 +20,31 @@ function getDb() {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
 
+    // Migration: Ensure import_batch_id & import_source columns exist on students table
+    try {
+      const cols = db.prepare("PRAGMA table_info(students)").all().map(c => c.name);
+      if (cols.length > 0) {
+        if (!cols.includes('import_batch_id')) {
+          db.exec("ALTER TABLE students ADD COLUMN import_batch_id TEXT;");
+        }
+        if (!cols.includes('import_source')) {
+          db.exec("ALTER TABLE students ADD COLUMN import_source TEXT DEFAULT 'Manual Entry';");
+        }
+      }
+    } catch (e) {
+      // ignore if table doesn't exist yet
+    }
+
     // Run schema migrations
     const schemaSql = fs.readFileSync(SCHEMA_PATH, 'utf8');
     db.exec(schemaSql);
+
+    // Ensure index exists
+    try {
+      db.exec("CREATE INDEX IF NOT EXISTS idx_students_import_batch ON students(import_batch_id);");
+    } catch (e) {
+      // ignore
+    }
 
     // Initialize default settings if not exists
     initDefaultSettings(db);

@@ -1,18 +1,17 @@
-/**
- * Email Composer & Personalization Studio View
- * Dynamic variable pills, pre-built recruitment templates, WYSIWYG editor, live split-preview with student switcher
- */
 const ComposerView = {
   state: {
     templates: [],
     students: [],
     colleges: [],
+    uploadBatches: [],
     selectedTemplateId: null,
     selectedPreviewStudentId: null,
-    targetType: 'all', // 'all', 'college', 'batch', 'selected'
+    targetType: 'all', // 'all', 'college', 'batch', 'selected', 'import_batch'
     selectedColleges: [],
     selectedBatches: [],
     selectedStudentIds: [],
+    targetBatchId: '',
+    targetBatchName: '',
     lastFocusedField: 'subject', // 'subject' or 'body'
     campaignTitle: 'Aparaitech Campus Placement Outreach 2026',
     subject: 'Campus Placement Drive 2026: Career Opportunity for {Name} from {College}',
@@ -28,15 +27,17 @@ const ComposerView = {
     `;
 
     try {
-      const [tplData, stdData, colData] = await Promise.all([
+      const [tplData, stdData, colData, batchData] = await Promise.all([
         api.getTemplates(),
         api.getStudents({ limit: 50 }),
-        api.getColleges()
+        api.getColleges(),
+        api.getUploadBatches()
       ]);
 
       this.state.templates = tplData.templates || [];
       this.state.students = stdData.students || [];
       this.state.colleges = colData.colleges || [];
+      this.state.uploadBatches = batchData.batches || [];
 
       if (this.state.students.length > 0 && !this.state.selectedPreviewStudentId) {
         this.state.selectedPreviewStudentId = this.state.students[0].id;
@@ -46,6 +47,13 @@ const ComposerView = {
       if (routeParams && routeParams.selectedIds && routeParams.selectedIds.length > 0) {
         this.state.targetType = 'selected';
         this.state.selectedStudentIds = routeParams.selectedIds;
+      }
+
+      // If routed with a specific bulk upload batch
+      if (routeParams && (routeParams.target_type === 'import_batch' || routeParams.target_batch_id)) {
+        this.state.targetType = 'import_batch';
+        this.state.targetBatchId = routeParams.target_batch_id;
+        this.state.targetBatchName = routeParams.target_batch_name || '';
       }
 
       // Default to first template if body is empty
@@ -114,12 +122,29 @@ const ComposerView = {
                   <input type="radio" name="targetTypeRadio" value="batch" ${this.state.targetType === 'batch' ? 'checked' : ''} onchange="ComposerView.handleTargetTypeChange(this.value)" />
                   <span>Filter by Batch Year</span>
                 </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.86rem; cursor: pointer;">
+                  <input type="radio" name="targetTypeRadio" value="import_batch" ${this.state.targetType === 'import_batch' ? 'checked' : ''} onchange="ComposerView.handleTargetTypeChange(this.value)" />
+                  <span>Filter by Bulk Upload Spreadsheet</span>
+                </label>
                 ${this.state.selectedStudentIds.length > 0 ? `
                   <label style="display: flex; align-items: center; gap: 6px; font-size: 0.86rem; cursor: pointer;">
                     <input type="radio" name="targetTypeRadio" value="selected" ${this.state.targetType === 'selected' ? 'checked' : ''} onchange="ComposerView.handleTargetTypeChange(this.value)" />
                     <span>Selected Students (${this.state.selectedStudentIds.length})</span>
                   </label>
                 ` : ''}
+              </div>
+
+              <!-- Upload Batch Container -->
+              <div id="targetUploadBatchContainer" style="display: ${this.state.targetType === 'import_batch' ? 'block' : 'none'}; margin-top: 10px; background: #f8fafc; padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                <label class="form-label" style="font-size: 0.84rem; margin-bottom: 6px;">Select Bulk Upload Spreadsheet:</label>
+                <select class="form-select" id="targetUploadBatchSelect" onchange="ComposerView.handleUploadBatchSelect(this.value)">
+                  <option value="">-- Choose Bulk Upload Batch --</option>
+                  ${this.state.uploadBatches.map(b => `
+                    <option value="${b.import_batch_id}" ${this.state.targetBatchId === b.import_batch_id ? 'selected' : ''}>
+                      📄 ${b.import_source} (${b.student_count} candidates &bull; ${new Date(b.created_at).toLocaleDateString()})
+                    </option>
+                  `).join('')}
+                </select>
               </div>
 
               <!-- College Chips Container -->
@@ -356,9 +381,20 @@ const ComposerView = {
     this.state.targetType = type;
     const colContainer = document.getElementById('targetCollegesContainer');
     const batchContainer = document.getElementById('targetBatchesContainer');
+    const uploadBatchContainer = document.getElementById('targetUploadBatchContainer');
 
     if (colContainer) colContainer.style.display = type === 'college' ? 'flex' : 'none';
     if (batchContainer) batchContainer.style.display = type === 'batch' ? 'flex' : 'none';
+    if (uploadBatchContainer) uploadBatchContainer.style.display = type === 'import_batch' ? 'block' : 'none';
+  },
+
+  handleUploadBatchSelect(batchId) {
+    this.state.targetBatchId = batchId;
+    const found = this.state.uploadBatches.find(b => b.import_batch_id === batchId);
+    if (found) {
+      this.state.targetBatchName = found.import_source;
+      app.showToast(`Selected bulk upload: "${found.import_source}" (${found.student_count} candidates)`, 'info');
+    }
   },
 
   toggleTargetCollege(college, checked) {
@@ -461,6 +497,10 @@ const ComposerView = {
       targetLabel = this.state.selectedBatches.length > 0
         ? `Batches: ${this.state.selectedBatches.join(', ')}`
         : 'All Batches';
+    } else if (this.state.targetType === 'import_batch') {
+      targetLabel = this.state.targetBatchName
+        ? `Bulk Upload Batch: "${this.state.targetBatchName}"`
+        : 'Selected Bulk Upload Batch';
     } else if (this.state.targetType === 'selected') {
       targetLabel = `${this.state.selectedStudentIds.length} Selected Candidates`;
     }
@@ -504,6 +544,8 @@ const ComposerView = {
         target_type: this.state.targetType,
         target_colleges: this.state.selectedColleges,
         target_batches: this.state.selectedBatches,
+        target_batch_id: this.state.targetBatchId,
+        target_upload_batches: this.state.targetBatchId ? [this.state.targetBatchId] : [],
         selected_student_ids: this.state.selectedStudentIds
       };
 

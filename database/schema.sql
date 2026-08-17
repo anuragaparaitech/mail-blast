@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS students (
     branch TEXT DEFAULT 'Computer Science',
     batch TEXT DEFAULT '2026',
     status TEXT DEFAULT 'Active', -- 'Active', 'Unsubscribed', 'Placed', 'Blacklisted'
+    import_batch_id TEXT,        -- Unique ID for the bulk upload batch (e.g. batch_1723871234_iitb)
+    import_source TEXT DEFAULT 'Manual Entry', -- Name of spreadsheet file or source
     tags TEXT DEFAULT '[]',       -- JSON array of tags, e.g. ["B.Tech", "Shortlisted", "Baramati"]
     notes TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -23,6 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_students_college ON students(college);
 CREATE INDEX IF NOT EXISTS idx_students_batch ON students(batch);
 CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
 CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
+CREATE INDEX IF NOT EXISTS idx_students_import_batch ON students(import_batch_id);
 
 -- Table: templates
 CREATE TABLE IF NOT EXISTS templates (

@@ -13,6 +13,7 @@ router.get('/', (req, res) => {
       batch = '',
       branch = '',
       status = '',
+      import_batch_id = '',
       page = 1,
       limit = 20,
       sortBy = 'id',
@@ -51,6 +52,11 @@ router.get('/', (req, res) => {
       params.push(status.trim());
     }
 
+    if (import_batch_id.trim()) {
+      whereClauses.push('import_batch_id = ?');
+      params.push(import_batch_id.trim());
+    }
+
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
     // Count total matching
@@ -70,7 +76,7 @@ router.get('/', (req, res) => {
       LIMIT ? OFFSET ?
     `).all(...params, validLimit, offset);
 
-    // Get filter options (colleges, batches, branches)
+    // Get filter options (colleges, batches, branches, uploadBatches)
     const colleges = db.prepare(`
       SELECT college, COUNT(*) as count 
       FROM students 
@@ -92,6 +98,18 @@ router.get('/', (req, res) => {
       ORDER BY branch ASC
     `).all().map(b => b.branch);
 
+    const uploadBatches = db.prepare(`
+      SELECT 
+        import_batch_id,
+        COALESCE(import_source, 'Uploaded Spreadsheet') as import_source,
+        COUNT(*) as student_count,
+        MIN(created_at) as created_at
+      FROM students 
+      WHERE import_batch_id IS NOT NULL AND import_batch_id != ''
+      GROUP BY import_batch_id
+      ORDER BY created_at DESC
+    `).all();
+
     res.json({
       success: true,
       students: rows,
@@ -104,11 +122,51 @@ router.get('/', (req, res) => {
       filterOptions: {
         colleges,
         batches,
-        branches
+        branches,
+        uploadBatches
       }
     });
   } catch (error) {
     console.error('Error fetching students:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/students/batches - Get all distinct bulk upload batches with counts
+router.get('/batches', (req, res) => {
+  try {
+    const db = getDb();
+    const batches = db.prepare(`
+      SELECT 
+        import_batch_id, 
+        COALESCE(import_source, 'Uploaded Spreadsheet') as import_source,
+        COUNT(*) as student_count,
+        MIN(created_at) as created_at
+      FROM students 
+      WHERE import_batch_id IS NOT NULL AND import_batch_id != ''
+      GROUP BY import_batch_id
+      ORDER BY created_at DESC
+    `).all();
+    res.json({ success: true, batches });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/students/batch/:batchId - Delete all data of a single bulk upload
+router.delete('/batch/:batchId', (req, res) => {
+  try {
+    const db = getDb();
+    const { batchId } = req.params;
+
+    const result = db.prepare('DELETE FROM students WHERE import_batch_id = ?').run(batchId);
+
+    res.json({
+      success: true,
+      deletedCount: result.changes,
+      message: `Successfully deleted all ${result.changes} candidates from this bulk upload.`
+    });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });

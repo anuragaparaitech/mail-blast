@@ -73,12 +73,18 @@ class App {
   handleRoute() {
     const hash = window.location.hash.replace('#', '') || 'dashboard';
     const [viewName] = hash.split('?');
-    this.navigate(viewName, null, false);
+    const params = this.pendingParams || null;
+    this.pendingParams = null;
+    this.navigate(viewName, params, false);
   }
 
   navigate(viewName, params = null, updateHash = true) {
     if (!this.views[viewName]) {
       viewName = 'dashboard';
+    }
+
+    if (params) {
+      this.pendingParams = params;
     }
 
     // Clean up previous view if needed
@@ -89,9 +95,21 @@ class App {
     this.currentView = viewName;
 
     if (updateHash) {
+      if (window.location.hash === `#${viewName}`) {
+        // Same hash, handle route manually
+        const routeParams = this.pendingParams || params;
+        this.pendingParams = null;
+        this.renderView(viewName, routeParams);
+        return;
+      }
       window.location.hash = viewName;
+      return;
     }
 
+    this.renderView(viewName, params);
+  }
+
+  renderView(viewName, params) {
     // Update active nav class
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(el => {
       if (el.getAttribute('data-view') === viewName) {

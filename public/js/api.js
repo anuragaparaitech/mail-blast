@@ -66,6 +66,14 @@ const api = {
     return this.request('/students/colleges');
   },
 
+  getUploadBatches() {
+    return this.request('/students/batches');
+  },
+
+  deleteUploadBatch(batchId) {
+    return this.request(`/students/batch/${encodeURIComponent(batchId)}`, { method: 'DELETE' });
+  },
+
   // Bulk Upload API
   parseSpreadsheet(formData) {
     return this.request('/upload/parse', { method: 'POST', body: formData });
@@ -75,8 +83,8 @@ const api = {
     return this.request('/upload/revalidate', { method: 'POST', body: { rawRows, mapping } });
   },
 
-  commitSpreadsheet(rawRows, mapping, duplicateStrategy) {
-    return this.request('/upload/commit', { method: 'POST', body: { rawRows, mapping, duplicateStrategy } });
+  commitSpreadsheet(rawRows, mapping, duplicateStrategy, filename) {
+    return this.request('/upload/commit', { method: 'POST', body: { rawRows, mapping, duplicateStrategy, filename } });
   },
 
   // Templates API

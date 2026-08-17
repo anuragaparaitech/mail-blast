@@ -66,7 +66,7 @@ router.post('/revalidate', (req, res) => {
 router.post('/commit', (req, res) => {
   try {
     const db = getDb();
-    const { rawRows, mapping, duplicateStrategy = 'skip' } = req.body;
+    const { rawRows, mapping, duplicateStrategy = 'skip', filename = 'Spreadsheet Upload', importBatchId } = req.body;
 
     if (!rawRows || !mapping) {
       return res.status(400).json({ success: false, message: 'Data rows and column mapping are required.' });
@@ -82,18 +82,21 @@ router.post('/commit', (req, res) => {
       });
     }
 
+    const currentBatchId = importBatchId || `batch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const currentImportSource = filename || 'Spreadsheet Upload';
+
     let insertedCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
 
     const findExisting = db.prepare('SELECT id, name, college, phone, branch, batch FROM students WHERE email = ?');
     const insertStmt = db.prepare(`
-      INSERT INTO students (name, email, college, phone, branch, batch, status, tags, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO students (name, email, college, phone, branch, batch, status, import_batch_id, import_source, tags, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const updateStmt = db.prepare(`
       UPDATE students 
-      SET name = ?, college = ?, phone = ?, branch = ?, batch = ?, updated_at = datetime('now')
+      SET name = ?, college = ?, phone = ?, branch = ?, batch = ?, import_batch_id = ?, import_source = ?, updated_at = datetime('now')
       WHERE id = ?
     `);
 
@@ -112,6 +115,8 @@ router.post('/commit', (req, res) => {
               item.phone || existing.phone,
               item.branch || existing.branch,
               item.batch || existing.batch,
+              currentBatchId,
+              currentImportSource,
               existing.id
             );
             updatedCount++;
@@ -125,8 +130,10 @@ router.post('/commit', (req, res) => {
             item.branch,
             item.batch,
             'Active',
+            currentBatchId,
+            currentImportSource,
             item.tags,
-            'Bulk imported'
+            `Bulk imported from ${currentImportSource}`
           );
           insertedCount++;
         }
@@ -138,6 +145,8 @@ router.post('/commit', (req, res) => {
     res.json({
       success: true,
       message: `Bulk import completed successfully! Saved ${insertedCount + updatedCount} students to database. (Added: ${insertedCount} new, Updated: ${updatedCount}, Skipped: ${skippedCount})`,
+      batchId: currentBatchId,
+      importSource: currentImportSource,
       summary: {
         totalAttempted: validRows.length,
         totalSaved: insertedCount + updatedCount,

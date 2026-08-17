@@ -294,10 +294,10 @@ const ImportView = {
     }
 
     try {
-      const res = await api.commitSpreadsheet(this.state.rawRows, this.state.mapping, this.state.duplicateStrategy);
+      const res = await api.commitSpreadsheet(this.state.rawRows, this.state.mapping, this.state.duplicateStrategy, this.state.filename);
 
       container.innerHTML = `
-        <div class="card" style="text-align: center; padding: 48px; max-width: 650px; margin: 0 auto;">
+        <div class="card" style="text-align: center; padding: 48px; max-width: 680px; margin: 0 auto;">
           <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--color-success-bg); color: var(--color-success); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
@@ -319,20 +319,26 @@ const ImportView = {
             </div>
           </div>
 
-          <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;">
-            <button class="btn btn-secondary" onclick="app.navigate('students')">View Candidate Pool</button>
-            <button class="btn btn-primary" onclick="app.navigate('composer')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              <span>Launch Placement Blast Now</span>
+          <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-lg" onclick="app.navigate('composer', { target_type: 'import_batch', target_batch_id: '${res.batchId}', target_batch_name: '${(this.state.filename || 'Bulk Upload').replace(/'/g, "\\'")}' })">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span>Blast to This Bulk Upload (${res.summary.inserted + res.summary.updated} Candidates)</span>
+            </button>
+            <button class="btn btn-secondary" onclick="app.navigate('students', { import_batch_id: '${res.batchId}' })">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              <span>View in Student Pool</span>
+            </button>
+            <button class="btn btn-secondary" onclick="ImportView.render(document.getElementById('viewContainer'))">
+              <span>Upload Another File</span>
             </button>
           </div>
         </div>
       `;
 
-      app.showToast('Import completed successfully!', 'success');
+      app.showToast('Bulk import completed successfully!', 'success');
     } catch (error) {
-      if (btn) btn.disabled = false;
       app.showToast('Import failed: ' + error.message, 'error');
+      this.renderStep2();
     }
   }
 };

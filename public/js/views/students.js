@@ -10,14 +10,19 @@ const StudentsView = {
     college: '',
     batch: '',
     status: '',
+    import_batch_id: '',
     page: 1,
     limit: 15,
     totalPages: 1,
     total: 0,
-    filterOptions: { colleges: [], batches: [] }
+    filterOptions: { colleges: [], batches: [], uploadBatches: [] }
   },
 
-  async render(container) {
+  async render(container, routeParams = {}) {
+    if (routeParams && routeParams.import_batch_id) {
+      this.state.import_batch_id = routeParams.import_batch_id;
+    }
+
     container.innerHTML = `
       <div class="view-header">
         <div class="view-title-group">
@@ -48,11 +53,15 @@ const StudentsView = {
             <input type="text" id="studentSearchInput" placeholder="Search by name, email, college, phone..." value="${StudentsView.state.search}" oninput="StudentsView.handleSearch(this.value)" />
           </div>
 
-          <select class="form-select" style="width: auto; min-width: 180px;" id="filterCollege" onchange="StudentsView.handleFilterCollege(this.value)">
+          <select class="form-select" style="width: auto; min-width: 170px;" id="filterUploadBatch" onchange="StudentsView.handleFilterUploadBatch(this.value)">
+            <option value="">All Upload Sources (${StudentsView.state.total || 'All'})</option>
+          </select>
+
+          <select class="form-select" style="width: auto; min-width: 160px;" id="filterCollege" onchange="StudentsView.handleFilterCollege(this.value)">
             <option value="">All Colleges (${StudentsView.state.total || 'All'})</option>
           </select>
 
-          <select class="form-select" style="width: auto; min-width: 130px;" id="filterBatch" onchange="StudentsView.handleFilterBatch(this.value)">
+          <select class="form-select" style="width: auto; min-width: 120px;" id="filterBatch" onchange="StudentsView.handleFilterBatch(this.value)">
             <option value="">All Batches</option>
             <option value="2027">Batch 2027</option>
             <option value="2026">Batch 2026</option>
@@ -78,6 +87,9 @@ const StudentsView = {
         </div>
       </div>
 
+      <!-- Bulk Upload Active Banner -->
+      <div id="batchActionBanner" style="display: none; margin-bottom: 16px;"></div>
+
       <!-- Students Table -->
       <div class="table-container" id="studentsTableWrapper">
         <div class="view-loading">
@@ -96,6 +108,7 @@ const StudentsView = {
         search: this.state.search,
         college: this.state.college,
         batch: this.state.batch,
+        import_batch_id: this.state.import_batch_id,
         page: this.state.page,
         limit: this.state.limit
       });
@@ -103,11 +116,22 @@ const StudentsView = {
       this.state.students = data.students || [];
       this.state.total = data.pagination.total || 0;
       this.state.totalPages = data.pagination.totalPages || 1;
-      this.state.filterOptions = data.filterOptions || { colleges: [], batches: [] };
+      this.state.filterOptions = data.filterOptions || { colleges: [], batches: [], uploadBatches: [] };
 
       // Update sidebar counter
       const counterEl = document.getElementById('navStudentCount');
       if (counterEl) counterEl.textContent = this.state.total;
+
+      // Populate upload batches filter
+      const batchSelect = document.getElementById('filterUploadBatch');
+      if (batchSelect) {
+        batchSelect.innerHTML = `<option value="">All Upload Sources (${this.state.total || 'All'})</option>` +
+          (this.state.filterOptions.uploadBatches || []).map(b => `
+            <option value="${b.import_batch_id}" ${this.state.import_batch_id === b.import_batch_id ? 'selected' : ''}>
+              📄 ${b.import_source} (${b.student_count})
+            </option>
+          `).join('');
+      }
 
       // Populate college filter if not already populated
       const collegeSelect = document.getElementById('filterCollege');
@@ -118,9 +142,100 @@ const StudentsView = {
           `).join('');
       }
 
+      this.renderBatchBanner();
       this.renderTable();
     } catch (error) {
       app.showToast('Failed to load students: ' + error.message, 'error');
+    }
+  },
+
+  renderBatchBanner() {
+    const banner = document.getElementById('batchActionBanner');
+    if (!banner) return;
+
+    if (this.state.import_batch_id) {
+      const batches = this.state.filterOptions.uploadBatches || [];
+      const currentBatch = batches.find(b => b.import_batch_id === this.state.import_batch_id);
+      const batchName = currentBatch ? currentBatch.import_source : 'Selected Upload Batch';
+
+      banner.style.display = 'flex';
+      banner.style.justifyContent = 'space-between';
+      banner.style.alignItems = 'center';
+      banner.style.flexWrap = 'wrap';
+      banner.style.gap = '12px';
+      banner.style.background = '#eff6ff';
+      banner.style.border = '1.5px solid var(--brand-sapphire)';
+      banner.style.padding = '12px 18px';
+      banner.style.borderRadius = 'var(--radius-sm)';
+
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.1rem;">📄</span>
+          <div>
+            <div style="font-weight: 700; color: var(--brand-sapphire); font-size: 0.92rem;">
+              Viewing Bulk Upload: "${batchName}"
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              Contains ${this.state.total} candidates in this single bulk upload
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-primary btn-sm" onclick="StudentsView.blastCurrentBatch('${this.state.import_batch_id}', '${batchName.replace(/'/g, "\\'")}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Blast Entire Upload (${this.state.total})</span>
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="StudentsView.deleteCurrentBatch('${this.state.import_batch_id}', '${batchName.replace(/'/g, "\\'")}', ${this.state.total})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span>Delete All Data of this Upload (${this.state.total})</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="StudentsView.handleFilterUploadBatch('')">
+            <span>Clear Filter</span>
+          </button>
+        </div>
+      `;
+    } else {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+    }
+  },
+
+  handleFilterUploadBatch(batchId) {
+    this.state.import_batch_id = batchId;
+    this.state.page = 1;
+    this.fetchStudents();
+  },
+
+  blastCurrentBatch(batchId, batchName) {
+    const bId = batchId || this.state.import_batch_id;
+    if (!bId) return;
+    app.navigate('composer', {
+      target_type: 'import_batch',
+      target_batch_id: bId,
+      target_batch_name: batchName || 'Bulk Upload Batch'
+    });
+  },
+
+  async deleteCurrentBatch(batchId, batchName, count) {
+    const bId = batchId || this.state.import_batch_id;
+    if (!bId) return;
+
+    const displayName = batchName || 'this upload spreadsheet';
+    const numText = count ? `${count} ` : '';
+
+    if (!confirm(`⚠️ DANGER: Are you sure you want to permanently delete all ${numText}student candidates imported from "${displayName}"?\n\nThis will remove all candidate data from this bulk upload. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await api.deleteUploadBatch(bId);
+      app.showToast(res.message || `Deleted bulk upload batch "${displayName}"`, 'success');
+      this.state.import_batch_id = '';
+      this.state.selectedIds.clear();
+      this.fetchStudents();
+    } catch (error) {
+      app.showToast('Failed to delete bulk upload batch: ' + error.message, 'error');
     }
   },
 

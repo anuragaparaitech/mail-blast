@@ -200,13 +200,15 @@ async function runTestSuite() {
   test('Bulk Upload: Saves 500+ records together in bulk in a single atomic transaction', () => {
     const db = getDb();
     const beforeCount = db.prepare('SELECT COUNT(*) as c FROM students').get().c;
+    const testBatchId = `batch_bulk500_${Date.now()}`;
 
-    // Generate 500 student records
+    // Generate 500 unique student records
     const bulk500 = [];
+    const timestamp = Date.now();
     for (let i = 1; i <= 500; i++) {
       bulk500.push({
         'Name': `Bulk Student ${i}`,
-        'Email': `bulk.student.${i}@college.edu`
+        'Email': `bulk.student.${timestamp}.${i}@college.edu`
       });
     }
 
@@ -215,8 +217,8 @@ async function runTestSuite() {
     assert.strictEqual(validated.validCount, 500, 'Expected all 500 records to be valid');
 
     const insertStmt = db.prepare(`
-      INSERT INTO students (name, email, college, phone, branch, batch, status, tags, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO students (name, email, college, phone, branch, batch, status, import_batch_id, import_source, tags, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const commitTx = db.transaction(() => {
@@ -230,6 +232,8 @@ async function runTestSuite() {
           item.branch,
           item.batch,
           'Active',
+          testBatchId,
+          'Bulk 500 Test File.xlsx',
           item.tags,
           'Bulk 500 test'
         );
@@ -257,6 +261,50 @@ async function runTestSuite() {
 
     const savedPass = db.prepare("SELECT value FROM settings WHERE key = 'smtp_pass'").get();
     assert.strictEqual(savedPass.value, testAppPassword, 'SMTP Password not saved or matched');
+  });
+
+  // 8. Single Bulk Upload Batch Selection & Targeting Test
+  test('Upload Batches: Filter and select data of one bulk upload for blast', () => {
+    const db = getDb();
+    const ts = Date.now();
+    const batchId = `batch_test_selection_${ts}`;
+    const batchFilename = 'IIT_Bombay_Placement_Drive.xlsx';
+
+    // Insert 5 students in this upload batch
+    for (let i = 1; i <= 5; i++) {
+      db.prepare(`
+        INSERT INTO students (name, email, college, status, import_batch_id, import_source)
+        VALUES (?, ?, 'IIT Bombay', 'Active', ?, ?)
+      `).run(`Batch Candidate ${i}`, `batch.candidate.${ts}.${i}@iitb.ac.in`, batchId, batchFilename);
+    }
+
+    const batchStudents = db.prepare('SELECT * FROM students WHERE import_batch_id = ?').all(batchId);
+    assert.strictEqual(batchStudents.length, 5, 'Expected 5 students in test bulk upload batch');
+  });
+
+  // 9. Delete All Data of One Bulk Upload Test
+  test('Upload Batches: Select and delete all data of one bulk upload atomically', () => {
+    const db = getDb();
+    const ts = Date.now();
+    const batchId = `batch_test_deletion_${ts}`;
+
+    // Insert 10 students in this upload batch
+    for (let i = 1; i <= 10; i++) {
+      db.prepare(`
+        INSERT INTO students (name, email, college, status, import_batch_id, import_source)
+        VALUES (?, ?, 'COEP Tech', 'Active', ?, 'COEP_Batch_To_Delete.csv')
+      `).run(`COEP Student ${i}`, `coep.delete.${ts}.${i}@coep.ac.in`, batchId);
+    }
+
+    const beforeDelete = db.prepare('SELECT COUNT(*) as c FROM students WHERE import_batch_id = ?').get(batchId).c;
+    assert.strictEqual(beforeDelete, 10, 'Expected 10 students before delete');
+
+    // Delete all data of this bulk upload
+    const result = db.prepare('DELETE FROM students WHERE import_batch_id = ?').run(batchId);
+    assert.strictEqual(result.changes, 10, 'Expected exactly 10 students to be deleted');
+
+    const afterDelete = db.prepare('SELECT COUNT(*) as c FROM students WHERE import_batch_id = ?').get(batchId).c;
+    assert.strictEqual(afterDelete, 0, 'Expected 0 students remaining in deleted bulk upload batch');
   });
 
   console.log('\n====================================================');

@@ -121,9 +121,11 @@ router.post('/', async (req, res) => {
       title,
       subject,
       body_html,
-      target_type = 'all', // 'all', 'college', 'batch', 'selected'
+      target_type = 'all', // 'all', 'college', 'batch', 'selected', 'import_batch', 'upload_batch'
       target_colleges = [],
       target_batches = [],
+      target_upload_batches = [],
+      target_batch_id = '',
       selected_student_ids = []
     } = req.body;
 
@@ -143,6 +145,12 @@ router.post('/', async (req, res) => {
     } else if (target_type === 'batch' && Array.isArray(target_batches) && target_batches.length > 0) {
       const placeholders = target_batches.map(() => '?').join(',');
       targetStudents = db.prepare(`SELECT * FROM students WHERE batch IN (${placeholders}) AND status = 'Active'`).all(...target_batches);
+    } else if (target_type === 'import_batch' || target_type === 'upload_batch') {
+      const batchIds = target_upload_batches.length > 0 ? target_upload_batches : (target_batch_id ? [target_batch_id] : []);
+      if (batchIds.length > 0) {
+        const placeholders = batchIds.map(() => '?').join(',');
+        targetStudents = db.prepare(`SELECT * FROM students WHERE import_batch_id IN (${placeholders}) AND status = 'Active'`).all(...batchIds);
+      }
     } else {
       // Default: All active students
       targetStudents = db.prepare("SELECT * FROM students WHERE status = 'Active'").all();
@@ -160,6 +168,8 @@ router.post('/', async (req, res) => {
       target_type,
       target_colleges,
       target_batches,
+      target_upload_batches,
+      target_batch_id,
       selected_student_ids_count: selected_student_ids.length
     });
 
