@@ -167,7 +167,7 @@ class BlastManager extends EventEmitter {
       const sendDelay = parseInt(config.send_delay_ms || '300', 10);
       const rotationStrategy = config.smtp_rotation_strategy || 'round_robin';
 
-      // Render personalized subject and body
+      // Render personalized subject and body with campaign's dynamic Apply Now link
       const studentData = {
         name: recipient.recipient_name,
         email: recipient.recipient_email,
@@ -177,8 +177,14 @@ class BlastManager extends EventEmitter {
         batch: recipient.batch || '2026'
       };
 
-      const renderedSubject = renderText(campaign.subject, studentData);
-      const renderedBody = renderText(campaign.body_html, studentData);
+      const customVars = {
+        apply_link: campaign.apply_link || 'https://aparaitech.org/apply',
+        ApplyLink: campaign.apply_link || 'https://aparaitech.org/apply',
+        Application_Link: campaign.apply_link || 'https://aparaitech.org/apply'
+      };
+
+      const renderedSubject = renderText(campaign.subject, studentData, customVars);
+      const renderedBody = renderText(campaign.body_html, studentData, customVars);
 
       // Pick next SMTP account from pool with failover support
       let chosenSmtp = smtpPool.getNextAccount(rotationStrategy);

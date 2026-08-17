@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     title TEXT NOT NULL,
     subject TEXT NOT NULL,
     body_html TEXT NOT NULL,
+    apply_link TEXT DEFAULT 'https://aparaitech.org/apply', -- Dedicated application / apply now hyperlink
     target_type TEXT DEFAULT 'all',      -- 'all', 'college', 'batch', 'selected'
     target_filter TEXT DEFAULT '',       -- JSON filter metadata
     total_recipients INTEGER DEFAULT 0,

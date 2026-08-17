@@ -369,6 +369,31 @@ async function runTestSuite() {
     assert.strictEqual(invalidResult.success, false, 'Expected false for invalid protocol URI');
   });
 
+  // 13. Dynamic Application / Apply Now Link Substitution Test
+  test('Template Engine: Renders custom dynamic {ApplyLink} and {Application_Link} correctly in hyperlinks', () => {
+    const { renderText } = require('../services/templateEngine');
+    const student = {
+      name: 'Aditi Deshmukh',
+      college: 'VPKBIET Baramati',
+      batch: '2026'
+    };
+
+    const customUrl = 'https://careers.aparaitech.org/apply?drive=2026-pune-campus';
+    const htmlTemplate = '<p>Hi {Name},</p><a href="{ApplyLink}">Apply Now</a><p>Or visit {Application_Link}</p>';
+
+    const rendered = renderText(htmlTemplate, student, { apply_link: customUrl });
+    assert(rendered.includes(`href="${customUrl}"`), 'Expected rendered HTML to include custom dynamic ApplyLink href');
+    assert(rendered.includes(`visit ${customUrl}`), 'Expected rendered HTML to include custom dynamic Application_Link');
+    assert(rendered.includes('Hi Aditi Deshmukh'), 'Expected name personalization');
+  });
+
+  // 14. Campaigns DB Schema: apply_link column exists
+  test('Database Schema: campaigns table has apply_link column for persistent custom URLs', () => {
+    const db = getDb();
+    const cols = db.prepare("PRAGMA table_info(campaigns)").all().map(c => c.name);
+    assert(cols.includes('apply_link'), 'Expected campaigns table to include apply_link column');
+  });
+
   console.log('\n====================================================');
   console.log(`📊 Test Results: ${passedTests} / ${totalTests} Passed (${Math.round((passedTests / totalTests) * 100)}%)`);
   console.log('====================================================');

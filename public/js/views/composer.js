@@ -14,6 +14,7 @@ const ComposerView = {
     targetBatchName: '',
     lastFocusedField: 'subject', // 'subject' or 'body'
     campaignTitle: 'Aparaitech Campus Placement Outreach 2026',
+    applyLink: 'https://aparaitech.org/apply',
     subject: 'Campus Placement Drive 2026: Career Opportunity for {Name} from {College}',
     bodyHtml: ''
   },
@@ -141,28 +142,28 @@ const ComposerView = {
                   <option value="">-- Choose Bulk Upload Batch --</option>
                   ${this.state.uploadBatches.map(b => `
                     <option value="${b.import_batch_id}" ${this.state.targetBatchId === b.import_batch_id ? 'selected' : ''}>
-                      📄 ${b.import_source} (${b.student_count} candidates &bull; ${new Date(b.created_at).toLocaleDateString()})
+                      📁 ${b.import_source} (${b.student_count} students) &bull; ${new Date(b.created_at).toLocaleDateString()}
                     </option>
                   `).join('')}
                 </select>
               </div>
 
-              <!-- College Chips Container -->
-              <div id="targetCollegesContainer" style="display: ${this.state.targetType === 'college' ? 'flex' : 'none'}; flex-wrap: wrap; gap: 8px; margin-top: 10px; background: #f8fafc; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
-                ${this.state.colleges.map(c => `
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; background: #fff; padding: 4px 10px; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;">
-                    <input type="checkbox" value="${c.college}" onchange="ComposerView.toggleTargetCollege('${c.college}', this.checked)" ${this.state.selectedColleges.includes(c.college) ? 'checked' : ''} />
-                    <span>${c.college} (${c.student_count})</span>
+              <!-- Colleges Multi-select Checkboxes -->
+              <div id="targetCollegesContainer" style="display: ${this.state.targetType === 'college' ? 'flex' : 'none'}; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow-y: auto; padding: 8px; background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid var(--border-light); margin-top: 10px;">
+                ${this.state.colleges.map(col => `
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; background: #ffffff; padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 20px; cursor: pointer;">
+                    <input type="checkbox" value="${col.college}" ${this.state.selectedColleges.includes(col.college) ? 'checked' : ''} onchange="ComposerView.toggleTargetCollege('${col.college.replace(/'/g, "\\'")}', this.checked)" />
+                    <span>${col.college} (${col.count})</span>
                   </label>
                 `).join('')}
               </div>
 
-              <!-- Batch Chips Container -->
-              <div id="targetBatchesContainer" style="display: ${this.state.targetType === 'batch' ? 'flex' : 'none'}; flex-wrap: wrap; gap: 8px; margin-top: 10px; background: #f8fafc; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
-                ${['2026', '2025', '2027', '2024'].map(b => `
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; background: #fff; padding: 5px 12px; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;">
-                    <input type="checkbox" value="${b}" onchange="ComposerView.toggleTargetBatch('${b}', this.checked)" ${this.state.selectedBatches.includes(b) ? 'checked' : ''} />
-                    <span>Batch ${b}</span>
+              <!-- Batch Year Multi-select Checkboxes -->
+              <div id="targetBatchesContainer" style="display: ${this.state.targetType === 'batch' ? 'flex' : 'none'}; flex-wrap: wrap; gap: 8px; padding: 8px; background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid var(--border-light); margin-top: 10px;">
+                ${['2024', '2025', '2026', '2027'].map(year => `
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; background: #ffffff; padding: 6px 14px; border: 1px solid #e2e8f0; border-radius: 20px; cursor: pointer;">
+                    <input type="checkbox" value="${year}" ${this.state.selectedBatches.includes(year) ? 'checked' : ''} onchange="ComposerView.toggleTargetBatch('${year}', this.checked)" />
+                    <span>Batch of ${year}</span>
                   </label>
                 `).join('')}
               </div>
@@ -172,12 +173,40 @@ const ComposerView = {
           <!-- Template Preset Selector Card -->
           <div class="card" style="margin-bottom: 20px;">
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Pre-Built Placement Templates</label>
-              <select class="form-select" id="templatePresetSelect" onchange="ComposerView.loadTemplatePreset(this.value)">
+              <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Choose Pre-built Aparaitech Template</span>
+                <a href="#templates" style="font-size: 0.76rem; color: var(--brand-sapphire); font-weight: 600;">Manage Templates &rarr;</a>
+              </label>
+              <select class="form-select" onchange="ComposerView.loadTemplatePreset(this.value)">
                 ${this.state.templates.map(t => `
-                  <option value="${t.id}" ${this.state.selectedTemplateId == t.id ? 'selected' : ''}>[${t.category}] ${t.name}</option>
+                  <option value="${t.id}" ${this.state.selectedTemplateId == t.id ? 'selected' : ''}>
+                    [${t.category}] ${t.name}
+                  </option>
                 `).join('')}
               </select>
+            </div>
+          </div>
+
+          <!-- 🔗 SEPARATE APPLICATION / APPLY NOW HYPERLINK BOX -->
+          <div class="card" style="margin-bottom: 20px; background: #f0fdf4; border: 1.5px solid #86efac;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="color: #166534; font-weight: 700; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="display: flex; align-items: center; gap: 6px;">
+                  🔗 Application / "Apply Now" Hyperlink URL
+                </span>
+                <span style="font-size: 0.72rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 12px; border: 1px solid #86efac;">
+                  Tag: {ApplyLink}
+                </span>
+              </label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="url" id="applyLinkInput" class="form-input" style="font-family: var(--font-mono); font-size: 0.88rem; background: #ffffff; font-weight: 500;" value="${this.state.applyLink}" oninput="ComposerView.handleApplyLinkChange(this.value)" placeholder="https://careers.aparaitech.org/apply?drive=2026 or https://forms.gle/..." />
+                <button type="button" class="btn btn-secondary btn-sm" onclick="ComposerView.insertApplyNowButton()" title="Insert styled 'Apply Now' CTA button at cursor position" style="white-space: nowrap; background: #ffffff; border-color: #86efac; color: #166534; font-weight: 600;">
+                  ➕ Insert Apply Button
+                </button>
+              </div>
+              <p style="font-size: 0.75rem; color: #166534; margin-top: 6px; margin-bottom: 0; line-height: 1.4;">
+                💡 <strong>Separate Link Box:</strong> Change this URL for different campus drives or job roles. All <strong>"Apply Now"</strong> buttons and <strong><code>{ApplyLink}</code></strong> tags in the email body will automatically link to this URL.
+              </p>
             </div>
           </div>
 
@@ -188,6 +217,7 @@ const ComposerView = {
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{College}')" title="Student college">{College}</button>
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{Branch}')" title="Branch / Stream">{Branch}</button>
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{Batch}')" title="Graduation Year">{Batch}</button>
+            <button type="button" class="var-pill" onclick="ComposerView.insertTag('{ApplyLink}')" title="Apply Now Hyperlink from box above" style="background: #dcfce7; color: #166534; font-weight: 700; border-color: #86efac;">{ApplyLink}</button>
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{Job_Role}')" title="Target Job Role">{Job_Role}</button>
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{Drive_Date}')" title="Drive Date">{Drive_Date}</button>
             <button type="button" class="var-pill" onclick="ComposerView.insertTag('{Package}')" title="Salary / CTC">{Package}</button>
@@ -212,7 +242,7 @@ const ComposerView = {
               <button type="button" class="editor-btn" onclick="ComposerView.formatDoc('insertUnorderedList')" title="Bullet List">&bull; List</button>
               <button type="button" class="editor-btn" onclick="ComposerView.formatDoc('insertOrderedList')" title="Numbered List">1. List</button>
               <button type="button" class="editor-btn" onclick="ComposerView.insertCallout()" title="Add Highlight Box">&#x25A4; Callout</button>
-              <button type="button" class="editor-btn" onclick="ComposerView.insertCtaButton()" title="Add Call to Action Button">&#x25AC; CTA Button</button>
+              <button type="button" class="editor-btn" onclick="ComposerView.insertApplyNowButton()" title="Add 'Apply Now' CTA Button" style="color: #166534; font-weight: 700;">&#x25AC; Apply Button</button>
               <button type="button" class="editor-btn" onclick="ComposerView.formatDoc('createLink', prompt('Enter URL:'))" title="Insert Link">&#x1F517; Link</button>
               <button type="button" class="editor-btn" onclick="ComposerView.toggleHtmlMode()" id="btnToggleSource" title="Toggle Raw HTML">&lt;/&gt; Source</button>
             </div>
@@ -272,6 +302,11 @@ const ComposerView = {
     this.updateLivePreview();
   },
 
+  handleApplyLinkChange(val) {
+    this.state.applyLink = val;
+    this.updateLivePreview();
+  },
+
   handleBodyChange() {
     const editor = document.getElementById('visualEditor');
     if (editor) {
@@ -304,14 +339,18 @@ const ComposerView = {
     this.handleBodyChange();
   },
 
-  insertCtaButton() {
+  insertApplyNowButton() {
     const html = `
       <div style="text-align: center; margin: 24px 0;">
-        <a href="https://aparaitech.org/careers" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">Register for Placement Drive &rarr;</a>
+        <a href="{ApplyLink}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">Apply Now & Confirm Registration &rarr;</a>
       </div>
     `;
     document.execCommand('insertHTML', false, html);
     this.handleBodyChange();
+  },
+
+  insertCtaButton() {
+    this.insertApplyNowButton();
   },
 
   toggleHtmlMode() {
@@ -418,6 +457,7 @@ const ComposerView = {
       const res = await api.renderPreview({
         subject: this.state.subject,
         body_html: this.state.bodyHtml,
+        apply_link: this.state.applyLink,
         studentId: this.state.selectedPreviewStudentId
       });
 
@@ -439,11 +479,15 @@ const ComposerView = {
       </div>
       <form id="testEmailForm" onsubmit="ComposerView.submitTestEmail(event)">
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 16px;">
-          Send a rendered preview of this email with personalized tags to your own email address to check formatting across email clients.
+          Send a rendered preview of this email with personalized tags and your custom Apply Now link to your own email address.
         </p>
         <div class="form-group">
           <label class="form-label">Recipient Test Email *</label>
           <input type="email" name="test_email" class="form-input" placeholder="recruiter@aparaitech.org" value="careers@aparaitech.org" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Application / Apply Now URL</label>
+          <input type="url" name="apply_link" class="form-input" value="${this.state.applyLink}" placeholder="https://careers.aparaitech.org/apply" />
         </div>
         <div class="form-group">
           <label class="form-label">Substitute Tags From Student Profile</label>
@@ -473,6 +517,7 @@ const ComposerView = {
     const payload = {
       test_email: formData.get('test_email'),
       studentId: formData.get('studentId'),
+      apply_link: formData.get('apply_link') || this.state.applyLink,
       subject: this.state.subject,
       body_html: this.state.bodyHtml
     };
@@ -512,12 +557,13 @@ const ComposerView = {
       </div>
       <div>
         <p style="color: var(--text-secondary); margin-bottom: 20px;">
-          You are about to launch an automated email blast. Each student will receive a unique personalized message rendered with their individual credentials.
+          You are about to launch an automated email blast. Each student will receive a unique personalized message rendered with their individual credentials and your custom application link.
         </p>
 
         <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px;">
           <div style="margin-bottom: 8px;"><strong>Campaign Title:</strong> ${this.state.campaignTitle}</div>
           <div style="margin-bottom: 8px;"><strong>Subject:</strong> ${this.state.subject}</div>
+          <div style="margin-bottom: 8px;"><strong>Application Link:</strong> <code style="color: #166534; font-weight: 600;">${this.state.applyLink}</code></div>
           <div><strong>Target Audience:</strong> <span style="color: var(--brand-sapphire); font-weight: 600;">${targetLabel}</span></div>
         </div>
 
@@ -541,6 +587,7 @@ const ComposerView = {
         title: this.state.campaignTitle,
         subject: this.state.subject,
         body_html: this.state.bodyHtml,
+        apply_link: this.state.applyLink,
         target_type: this.state.targetType,
         target_colleges: this.state.selectedColleges,
         target_batches: this.state.selectedBatches,

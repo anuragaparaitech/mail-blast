@@ -50,6 +50,16 @@ function getDb() {
       // ignore
     }
 
+    // Migration: Ensure campaigns has apply_link column
+    try {
+      const campCols = db.prepare("PRAGMA table_info(campaigns)").all().map(c => c.name);
+      if (campCols.length > 0 && !campCols.includes('apply_link')) {
+        db.exec("ALTER TABLE campaigns ADD COLUMN apply_link TEXT DEFAULT 'https://aparaitech.org/apply';");
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Run schema migrations
     const schemaSql = fs.readFileSync(SCHEMA_PATH, 'utf8');
     db.exec(schemaSql);

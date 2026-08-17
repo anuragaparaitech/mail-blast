@@ -40,9 +40,8 @@ function seedDatabase() {
       <li style="margin-bottom: 6px;">Technical Architecture & System Design Discussion</li>
       <li style="margin-bottom: 6px;">Leadership & Culture Fitment Interview</li>
     </ol>
-
     <div style="text-align: center; margin: 32px 0 24px 0;">
-      <a href="https://aparaitech.org/careers" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">Confirm Your Registration Now &rarr;</a>
+      <a href="{ApplyLink}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">Apply Now & Confirm Registration &rarr;</a>
     </div>
 
     <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">If you have any queries regarding the schedule or eligibility, please reach out to your Training & Placement Officer (TPO) or write directly to <a href="mailto:recruitment@aparaitech.org" style="color: #2563eb;">recruitment@aparaitech.org</a>.</p>
@@ -60,7 +59,7 @@ function seedDatabase() {
       name: 'Off-Campus Coding Assessment & Aptitude Round',
       category: 'Placement Drive',
       subject: 'Aparaitech National Tech Assessment: Online Coding Test Link for {Name}',
-      tags_used: JSON.stringify(['{Name}', '{College}', '{Drive_Date}', '{Job_Role}']),
+      tags_used: JSON.stringify(['{Name}', '{College}', '{Drive_Date}', '{Job_Role}', '{ApplyLink}']),
       body_html: `
 <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
   <div style="background: #0f172a; padding: 28px 24px; text-align: center; color: #ffffff;">
@@ -78,7 +77,7 @@ function seedDatabase() {
       <p style="margin: 0;"><strong>Candidate Registered Email:</strong> {Email}</p>
     </div>
     <div style="text-align: center; margin: 24px 0;">
-      <a href="https://aparaitech.org/assessment" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 28px; font-weight: 600; text-decoration: none; border-radius: 6px;">Launch Test Environment</a>
+      <a href="{ApplyLink}" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 28px; font-weight: 600; text-decoration: none; border-radius: 6px;">Launch Test Environment &rarr;</a>
     </div>
     <p style="font-size: 13px; color: #64748b;">Please ensure you are using a desktop or laptop with a working webcam, microphone, and a stable broadband internet connection.</p>
   </div>
@@ -91,7 +90,7 @@ function seedDatabase() {
       name: 'Summer AI & Cloud Internship Program 2025/2026',
       category: 'Internship',
       subject: 'Exciting Summer Internship Opportunity at Aparaitech Software - Apply Now, {Name}!',
-      tags_used: JSON.stringify(['{Name}', '{College}', '{Branch}', '{Company}']),
+      tags_used: JSON.stringify(['{Name}', '{College}', '{Branch}', '{Company}', '{ApplyLink}']),
       body_html: `
 <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
   <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px; text-align: center; color: white;">
@@ -114,7 +113,7 @@ function seedDatabase() {
     
     <p><strong>Stipend:</strong> ₹25,000 - ₹40,000 / month + Mentorship from Principal Engineers</p>
     <div style="text-align: center; margin: 28px 0;">
-      <a href="https://aparaitech.org/internships" style="background: #7c3aed; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Submit Internship Application</a>
+      <a href="{ApplyLink}" style="background: #7c3aed; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Submit Internship Application &rarr;</a>
     </div>
   </div>
   <div style="background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -126,7 +125,7 @@ function seedDatabase() {
       name: 'Technical Interview Shortlist Notification',
       category: 'Interview',
       subject: 'Congratulations {Name}! Shortlisted for Technical Interview Round at Aparaitech',
-      tags_used: JSON.stringify(['{Name}', '{College}', '{Job_Role}', '{Drive_Date}']),
+      tags_used: JSON.stringify(['{Name}', '{College}', '{Job_Role}', '{Drive_Date}', '{ApplyLink}']),
       body_html: `
 <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
   <div style="background: #065f46; padding: 26px; text-align: center; color: white;">
@@ -146,7 +145,7 @@ function seedDatabase() {
 
     <p>Please be prepared to walk through your previous projects, discuss algorithms, and live-code in your language of choice.</p>
     <div style="text-align: center; margin: 24px 0;">
-      <a href="https://aparaitech.org/interviews" style="background: #059669; color: white; padding: 12px 26px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Confirm Interview Slot Availability</a>
+      <a href="{ApplyLink}" style="background: #059669; color: white; padding: 12px 26px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Confirm Interview Slot Availability &rarr;</a>
     </div>
   </div>
   <div style="background: #f8fafc; padding: 14px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -158,7 +157,7 @@ function seedDatabase() {
       name: 'National Coding Challenge & Hackathon Announcement',
       category: 'Hackathon',
       subject: 'Aparaitech AI Hackathon 2026: Compete, Innovate & Win ₹2,50,000 + PPO Offers, {Name}!',
-      tags_used: JSON.stringify(['{Name}', '{College}', '{Company}']),
+      tags_used: JSON.stringify(['{Name}', '{College}', '{Company}', '{ApplyLink}']),
       body_html: `
 <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
   <div style="background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%); padding: 30px; text-align: center; color: white;">
@@ -174,7 +173,7 @@ function seedDatabase() {
       <li><strong>Mentorship:</strong> 1-on-1 guidance from Silicon Valley & Indian tech leaders</li>
     </ul>
     <div style="text-align: center; margin: 28px 0;">
-      <a href="https://aparaitech.org/hackathon" style="background: #2563eb; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Register Your Team (Free Entry)</a>
+      <a href="{ApplyLink}" style="background: #2563eb; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Register Your Team &rarr;</a>
     </div>
   </div>
   <div style="background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -186,7 +185,7 @@ function seedDatabase() {
       name: 'Official Job Offer & Onboarding Instructions',
       category: 'Offer',
       subject: 'Offer Letter: Welcome to Aparaitech Software, {Name}!',
-      tags_used: JSON.stringify(['{Name}', '{College}', '{Job_Role}', '{Package}']),
+      tags_used: JSON.stringify(['{Name}', '{College}', '{Job_Role}', '{Package}', '{ApplyLink}']),
       body_html: `
 <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
   <div style="background: linear-gradient(135deg, #0a192f 0%, #1e40af 100%); padding: 32px; text-align: center; color: white;">
@@ -199,16 +198,15 @@ function seedDatabase() {
     <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 18px; margin: 20px 0;">
       <p style="margin: 0 0 6px 0;"><strong>Designation:</strong> {Job_Role}</p>
       <p style="margin: 0 0 6px 0;"><strong>Annual Compensation:</strong> {Package}</p>
-      <p style="margin: 0 0 6px 0;"><strong>Joining Location:</strong> Bengaluru / Pune (Baramati)</p>
-      <p style="margin: 0;"><strong>Tentative Joining Date:</strong> July 1, 2026</p>
+      <p style="margin: 0 0 6px 0;"><strong>Joining Date:</strong> {Drive_Date}</p>
+      <p style="margin: 0;"><strong>Location:</strong> Bengaluru / Pune / Baramati Tech Centers</p>
     </div>
-    <p>Please review and electronically sign your formal offer letter by clicking below:</p>
-    <div style="text-align: center; margin: 26px 0;">
-      <a href="https://aparaitech.org/onboarding" style="background: #16a34a; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Review & Sign Offer Letter</a>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="{ApplyLink}" style="background: #059669; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Accept Offer &amp; Start Digital Onboarding &rarr;</a>
     </div>
   </div>
   <div style="background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
-    Aparaitech Software Human Resources &bull; recruitment@aparaitech.org
+    Aparaitech Software HR Operations &bull; careers@aparaitech.org
   </div>
 </div>`
     }

@@ -114,7 +114,7 @@ router.delete('/:id', (req, res) => {
 // POST /api/templates/preview - Live render subject & body for a selected student
 router.post('/preview', (req, res) => {
   try {
-    const { subject = '', body_html = '', studentId, customStudent = null } = req.body;
+    const { subject = '', body_html = '', apply_link = 'https://aparaitech.org/apply', studentId, customStudent = null } = req.body;
     const db = getDb();
 
     let studentData = customStudent;
@@ -135,8 +135,14 @@ router.post('/preview', (req, res) => {
       };
     }
 
-    const renderedSubject = renderText(subject, studentData);
-    const renderedBody = renderText(body_html, studentData);
+    const customVars = {
+      apply_link: apply_link || 'https://aparaitech.org/apply',
+      ApplyLink: apply_link || 'https://aparaitech.org/apply',
+      Application_Link: apply_link || 'https://aparaitech.org/apply'
+    };
+
+    const renderedSubject = renderText(subject, studentData, customVars);
+    const renderedBody = renderText(body_html, studentData, customVars);
 
     res.json({
       success: true,

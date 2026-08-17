@@ -121,6 +121,7 @@ router.post('/', async (req, res) => {
       title,
       subject,
       body_html,
+      apply_link = 'https://aparaitech.org/apply',
       target_type = 'all', // 'all', 'college', 'batch', 'selected', 'import_batch', 'upload_batch'
       target_colleges = [],
       target_batches = [],
@@ -174,14 +175,15 @@ router.post('/', async (req, res) => {
     });
 
     const createCampStmt = db.prepare(`
-      INSERT INTO campaigns (title, subject, body_html, target_type, target_filter, total_recipients, sent_count, success_count, failed_count, status)
-      VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 'draft')
+      INSERT INTO campaigns (title, subject, body_html, apply_link, target_type, target_filter, total_recipients, sent_count, success_count, failed_count, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'draft')
     `);
 
     const result = createCampStmt.run(
       title.trim(),
       subject.trim(),
       body_html,
+      (apply_link || 'https://aparaitech.org/apply').trim(),
       target_type,
       targetFilterMeta,
       targetStudents.length
@@ -230,7 +232,7 @@ router.post('/', async (req, res) => {
 // POST /api/campaigns/test-send - Send a single preview test email
 router.post('/test-send', async (req, res) => {
   try {
-    const { test_email, subject, body_html, studentId } = req.body;
+    const { test_email, subject, body_html, apply_link = 'https://aparaitech.org/apply', studentId } = req.body;
 
     if (!test_email) {
       return res.status(400).json({ success: false, message: 'Test email address is required.' });
@@ -252,8 +254,14 @@ router.post('/test-send', async (req, res) => {
       };
     }
 
-    const renderedSubject = renderText(subject || 'Test Email Blast', sampleStudent);
-    const renderedBody = renderText(body_html || '<p>This is a test recruitment blast preview.</p>', sampleStudent);
+    const customVars = {
+      apply_link: apply_link || 'https://aparaitech.org/apply',
+      ApplyLink: apply_link || 'https://aparaitech.org/apply',
+      Application_Link: apply_link || 'https://aparaitech.org/apply'
+    };
+
+    const renderedSubject = renderText(subject || 'Test Email Blast', sampleStudent, customVars);
+    const renderedBody = renderText(body_html || '<p>This is a test recruitment blast preview.</p>', sampleStudent, customVars);
 
     const result = await sendEmail({
       to: test_email.trim(),

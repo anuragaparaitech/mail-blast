@@ -10,7 +10,13 @@ const DEFAULT_VARIABLES = {
   Job_Role: 'Associate Software Engineer / AI Solutions Developer',
   Drive_Date: 'August 28, 2026',
   Package: '₹6.5 LPA - ₹12.0 LPA + Performance Incentives',
-  Application_Link: 'https://aparaitech.org/careers',
+  Application_Link: 'https://aparaitech.org/apply',
+  Apply_Link: 'https://aparaitech.org/apply',
+  ApplyLink: 'https://aparaitech.org/apply',
+  Apply_Url: 'https://aparaitech.org/apply',
+  ApplyUrl: 'https://aparaitech.org/apply',
+  ApplyNow_Link: 'https://aparaitech.org/apply',
+  ApplyNow: 'https://aparaitech.org/apply',
   Recruiter_Name: 'Campus Recruitment Team',
   Recruiter_Email: 'recruitment@aparaitech.org'
 };
@@ -19,9 +25,18 @@ function renderText(templateString, student = {}, customVariables = {}) {
   if (!templateString) return '';
 
   const firstName = student.name ? student.name.trim().split(' ')[0] : 'Candidate';
+  const applyLink = customVariables.apply_link || customVariables.ApplyLink || customVariables.Apply_Link || student.apply_link || DEFAULT_VARIABLES.Apply_Link;
 
   const mergedVars = {
     ...DEFAULT_VARIABLES,
+    Apply_Link: applyLink,
+    ApplyLink: applyLink,
+    Application_Link: applyLink,
+    ApplicationLink: applyLink,
+    Apply_Url: applyLink,
+    ApplyUrl: applyLink,
+    ApplyNow_Link: applyLink,
+    ApplyNow: applyLink,
     Name: student.name || 'Candidate',
     First_Name: firstName,
     Email: student.email || '',
