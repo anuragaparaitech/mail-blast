@@ -52,10 +52,27 @@ app.get('*', (req, res) => {
 
 // Start Server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  const os = require('os');
+  const HOST = '0.0.0.0';
+
+  app.listen(PORT, HOST, () => {
+    // Find LAN IP
+    const nets = os.networkInterfaces();
+    const networkIps = [];
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          networkIps.push({ name, address: net.address });
+        }
+      }
+    }
+
     console.log(`====================================================`);
     console.log(`🚀 Aparaitech Student Email Blast Server Running!`);
-    console.log(`🌐 Local URL: http://localhost:${PORT}`);
+    console.log(`💻 Local URL:   http://localhost:${PORT}`);
+    networkIps.forEach(net => {
+      console.log(`📱 Network URL (${net.name}): http://${net.address}:${PORT}`);
+    });
     console.log(`🏢 Recruitment Portal: Aparaitech Software (aparaitech.org)`);
     console.log(`====================================================`);
   });
