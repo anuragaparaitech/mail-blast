@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
 const { getDb } = require('../database/db');
+const { getPersistentMongoDb } = require('../database/mongo');
 const { parseFileBuffer, validateAndNormalizeRows, generateSampleData } = require('../services/excelParser');
 
 // Memory storage for fast buffer processing
@@ -63,7 +64,7 @@ router.post('/revalidate', (req, res) => {
 });
 
 // POST /api/upload/commit - Commit validated rows to the database
-router.post('/commit', (req, res) => {
+router.post('/commit', async (req, res) => {
   try {
     const db = getDb();
     const { rawRows, mapping, duplicateStrategy = 'skip', filename = 'Spreadsheet Upload', importBatchId } = req.body;
@@ -88,6 +89,52 @@ router.post('/commit', (req, res) => {
     let insertedCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+
+    // On serverless deployments, SQLite lives in /tmp and is discarded between
+    // invocations. Keep import results in Atlas whenever it is configured.
+    if (process.env.MONGODB_URI) {
+      const mongo = await getPersistentMongoDb();
+      const now = new Date().toISOString();
+      const operations = [];
+
+      for (const row of validRows) {
+        const item = row.normalized;
+        const existing = await mongo.collection('students').findOne({ email: item.email });
+        if (existing && duplicateStrategy === 'skip') {
+          skippedCount++;
+          continue;
+        }
+        const document = {
+          name: item.name || existing?.name || '',
+          email: item.email,
+          college: item.college || existing?.college || 'General Pool',
+          phone: item.phone || existing?.phone || '',
+          branch: item.branch || existing?.branch || 'Computer Science',
+          batch: item.batch || existing?.batch || '2026',
+          status: existing?.status || 'Active',
+          import_batch_id: currentBatchId,
+          import_source: currentImportSource,
+          tags: item.tags || existing?.tags || '[]',
+          notes: `Bulk imported from ${currentImportSource}`,
+          updated_at: now
+        };
+        if (existing) {
+          operations.push({ updateOne: { filter: { _id: existing._id }, update: { $set: document } } });
+          updatedCount++;
+        } else {
+          operations.push({ insertOne: { document: { ...document, created_at: now } } });
+          insertedCount++;
+        }
+      }
+      if (operations.length) await mongo.collection('students').bulkWrite(operations, { ordered: false });
+      return res.json({
+        success: true,
+        message: `Bulk import completed successfully! Saved ${insertedCount + updatedCount} students to database. (Added: ${insertedCount} new, Updated: ${updatedCount}, Skipped: ${skippedCount})`,
+        batchId: currentBatchId,
+        importSource: currentImportSource,
+        summary: { totalAttempted: validRows.length, totalSaved: insertedCount + updatedCount, inserted: insertedCount, updated: updatedCount, skipped: skippedCount, invalidDiscarded: validationResult.invalidCount }
+      });
+    }
 
     const findExisting = db.prepare('SELECT id, name, college, phone, branch, batch FROM students WHERE email = ?');
     const insertStmt = db.prepare(`

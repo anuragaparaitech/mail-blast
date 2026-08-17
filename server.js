@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const { getDb } = require('./database/db');
 const { seedDatabase } = require('./database/seed');
-const { connectMongo } = require('./database/mongo');
+const { getPersistentMongoDb } = require('./database/mongo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,7 +16,7 @@ try {
 
   // If MongoDB URI is configured in environment, connect to MongoDB Atlas
   if (process.env.MONGODB_URI) {
-    connectMongo(process.env.MONGODB_URI).catch(err => {
+    getPersistentMongoDb().catch(err => {
       console.warn('MongoDB Atlas auto-connect note:', err.message);
     });
   }
@@ -33,7 +33,11 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount API Routes
-app.use('/api/students', require('./routes/students'));
+// Vercel's filesystem is temporary. When Atlas is configured, route student
+// reads and writes to it directly so records survive cold starts and deploys.
+app.use('/api/students', process.env.MONGODB_URI
+  ? require('./routes/mongoStudents')
+  : require('./routes/students'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/campaigns', require('./routes/campaigns'));

@@ -5,6 +5,7 @@ let mongoClient = null;
 let mongoDb = null;
 let isConnected = false;
 let currentUri = process.env.MONGODB_URI || '';
+let connectionPromise = null;
 
 /**
  * Connect to MongoDB Atlas
@@ -50,6 +51,28 @@ async function connectMongo(uri = null) {
       message: `MongoDB Atlas connection failed: ${error.message}`
     };
   }
+}
+
+/**
+ * Return the configured Atlas database, connecting once per server instance.
+ * This is intentionally async: serverless functions must not fall back to
+ * Vercel's ephemeral /tmp SQLite database while Atlas is still connecting.
+ */
+async function getPersistentMongoDb() {
+  if (isMongoActive()) return mongoDb;
+
+  if (!connectionPromise) {
+    connectionPromise = connectMongo().then(result => {
+      if (!result.success) {
+        throw new Error(result.message || 'MongoDB Atlas connection failed.');
+      }
+      return mongoDb;
+    }).finally(() => {
+      connectionPromise = null;
+    });
+  }
+
+  return connectionPromise;
 }
 
 /**
@@ -262,5 +285,6 @@ module.exports = {
   testMongoConnection,
   syncSqliteToMongo,
   getMongoDb,
+  getPersistentMongoDb,
   isMongoActive
 };
