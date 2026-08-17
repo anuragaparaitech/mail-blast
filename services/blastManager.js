@@ -2,6 +2,7 @@ const EventEmitter = require('events');
 const { getDb } = require('../database/db');
 const { renderText } = require('./templateEngine');
 const { sendEmail, getMailerConfig } = require('./mailer');
+const smtpPool = require('./smtpPool');
 
 class BlastManager extends EventEmitter {
   constructor() {
@@ -164,6 +165,7 @@ class BlastManager extends EventEmitter {
       const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
       const config = getMailerConfig();
       const sendDelay = parseInt(config.send_delay_ms || '300', 10);
+      const rotationStrategy = config.smtp_rotation_strategy || 'round_robin';
 
       // Render personalized subject and body
       const studentData = {
@@ -178,16 +180,40 @@ class BlastManager extends EventEmitter {
       const renderedSubject = renderText(campaign.subject, studentData);
       const renderedBody = renderText(campaign.body_html, studentData);
 
-      // Send Email
-      const sendResult = await sendEmail({
-        to: recipient.recipient_email,
-        recipientName: recipient.recipient_name,
-        subject: renderedSubject,
-        html: renderedBody,
-        campaignId,
-        studentId: recipient.student_id,
-        student: studentData
-      });
+      // Pick next SMTP account from pool with failover support
+      let chosenSmtp = smtpPool.getNextAccount(rotationStrategy);
+      let sendResult = null;
+      let failoverAttempts = 0;
+      const excludedSmtpIds = [];
+
+      while (failoverAttempts < 3) {
+        sendResult = await sendEmail({
+          to: recipient.recipient_email,
+          recipientName: recipient.recipient_name,
+          subject: renderedSubject,
+          html: renderedBody,
+          campaignId,
+          studentId: recipient.student_id,
+          student: studentData,
+          smtpAccount: chosenSmtp
+        });
+
+        if (sendResult.isQuotaError && chosenSmtp) {
+          excludedSmtpIds.push(chosenSmtp.id);
+          const nextSmtp = smtpPool.getNextAccount(rotationStrategy, excludedSmtpIds);
+          if (nextSmtp && nextSmtp.id !== chosenSmtp.id) {
+            this.broadcast(campaignId, 'smtp_switched', {
+              oldSender: chosenSmtp.from_email || chosenSmtp.user,
+              newSender: nextSmtp.from_email || nextSmtp.user,
+              reason: 'Daily quota limit reached on sender. Auto-switched to backup sender seamlessly.'
+            });
+            chosenSmtp = nextSmtp;
+            failoverAttempts++;
+            continue;
+          }
+        }
+        break;
+      }
 
       // Update recipient record
       if (sendResult.success) {
@@ -198,9 +224,18 @@ class BlastManager extends EventEmitter {
               rendered_subject = ?,
               rendered_body = ?,
               sent_at = datetime('now'),
-              attempts = attempts + 1
+              attempts = attempts + 1,
+              smtp_account_id = ?,
+              smtp_sender = ?
           WHERE id = ?
-        `).run(sendResult.latencyMs, renderedSubject, renderedBody, recipient.id);
+        `).run(
+          sendResult.latencyMs,
+          renderedSubject,
+          renderedBody,
+          sendResult.smtpAccountId || null,
+          sendResult.smtpSender || (chosenSmtp ? chosenSmtp.from_email : ''),
+          recipient.id
+        );
 
         db.prepare(`
           UPDATE campaigns
@@ -217,9 +252,19 @@ class BlastManager extends EventEmitter {
               rendered_subject = ?,
               rendered_body = ?,
               sent_at = datetime('now'),
-              attempts = attempts + 1
+              attempts = attempts + 1,
+              smtp_account_id = ?,
+              smtp_sender = ?
           WHERE id = ?
-        `).run(sendResult.error, sendResult.latencyMs, renderedSubject, renderedBody, recipient.id);
+        `).run(
+          sendResult.error,
+          sendResult.latencyMs,
+          renderedSubject,
+          renderedBody,
+          sendResult.smtpAccountId || null,
+          sendResult.smtpSender || (chosenSmtp ? chosenSmtp.from_email : ''),
+          recipient.id
+        );
 
         db.prepare(`
           UPDATE campaigns

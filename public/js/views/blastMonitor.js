@@ -243,6 +243,22 @@ const BlastMonitorView = {
       }
     });
 
+    es.addEventListener('smtp_switched', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        app.showToast(`🔄 Sender Auto-Switched: ${data.oldSender} ➔ ${data.newSender} (${data.reason})`, 'warning');
+        const stream = document.getElementById('blastTelemetryStream');
+        if (stream) {
+          const logDiv = document.createElement('div');
+          logDiv.style.cssText = 'color: #f59e0b; margin-bottom: 6px; font-weight: 600;';
+          logDiv.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> 🔄 <strong>AUTO-FAILOVER:</strong> ${data.reason} &bull; Switched sender to <code>${data.newSender}</code>`;
+          stream.insertBefore(logDiv, stream.firstChild);
+        }
+      } catch (err) {
+        console.error('SSE smtp_switched error:', err);
+      }
+    });
+
     es.addEventListener('done', (e) => {
       try {
         const data = JSON.parse(e.data);

@@ -168,6 +168,35 @@ const api = {
     return this.request('/settings/test-smtp', { method: 'POST', body: data });
   },
 
+  // Multi-SMTP Account Pool API
+  getSmtpAccounts() {
+    return this.request('/settings/smtp-accounts');
+  },
+
+  createSmtpAccount(data) {
+    return this.request('/settings/smtp-accounts', { method: 'POST', body: data });
+  },
+
+  updateSmtpAccount(id, data) {
+    return this.request(`/settings/smtp-accounts/${id}`, { method: 'PUT', body: data });
+  },
+
+  toggleSmtpAccount(id) {
+    return this.request(`/settings/smtp-accounts/${id}/toggle`, { method: 'PATCH' });
+  },
+
+  deleteSmtpAccount(id) {
+    return this.request(`/settings/smtp-accounts/${id}`, { method: 'DELETE' });
+  },
+
+  testSmtpAccount(data) {
+    return this.request('/settings/smtp-accounts/test', { method: 'POST', body: data });
+  },
+
+  resetSmtpCounters() {
+    return this.request('/settings/smtp-accounts/reset-counters', { method: 'POST' });
+  },
+
   // Mailbox Inspector
   getInbox(params = {}) {
     const query = new URLSearchParams(params).toString();

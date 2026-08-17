@@ -102,3 +102,28 @@ CREATE TABLE IF NOT EXISTS simulated_inbox (
     received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_read INTEGER DEFAULT 0
 );
+
+-- Table: smtp_accounts (Multi-SMTP Senders Pool for Load Balancing & Auto-Rotation)
+CREATE TABLE IF NOT EXISTS smtp_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,                     -- e.g. "Primary HR 1 - Gmail", "Backup Sender 2"
+    host TEXT NOT NULL DEFAULT 'smtp.gmail.com',
+    port INTEGER DEFAULT 587,
+    secure INTEGER DEFAULT 0,               -- 1 for 465 SSL, 0 for 587 TLS
+    user TEXT NOT NULL,                     -- e.g. "hr1@aparaitech.org"
+    pass TEXT NOT NULL,                     -- App password
+    from_name TEXT DEFAULT 'Aparaitech Recruitment Team',
+    from_email TEXT NOT NULL,
+    reply_to TEXT DEFAULT 'careers@aparaitech.org',
+    daily_limit INTEGER DEFAULT 500,        -- Max emails per 24 hours (e.g. 500 for Google, 100 for free)
+    sent_today INTEGER DEFAULT 0,           -- Count sent in current day
+    last_sent_date TEXT DEFAULT '',         -- YYYY-MM-DD to auto-reset daily count
+    is_active INTEGER DEFAULT 1,            -- 1: enabled, 0: disabled
+    priority INTEGER DEFAULT 1,             -- 1 = highest priority
+    last_used_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_smtp_accounts_active ON smtp_accounts(is_active);
+CREATE INDEX IF NOT EXISTS idx_smtp_accounts_priority ON smtp_accounts(priority);

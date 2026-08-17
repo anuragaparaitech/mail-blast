@@ -307,6 +307,55 @@ async function runTestSuite() {
     assert.strictEqual(afterDelete, 0, 'Expected 0 students remaining in deleted bulk upload batch');
   });
 
+  // 10. Multi-SMTP Accounts Pool & Round-Robin Rotation Test
+  test('Multi-SMTP: Pool creates 5 sender accounts and alternates them in Round-Robin mode', () => {
+    const db = getDb();
+    const smtpPool = require('../services/smtpPool');
+
+    // Clear existing test accounts and insert 5 accounts
+    db.prepare('DELETE FROM smtp_accounts').run();
+
+    const insertAccount = db.prepare(`
+      INSERT INTO smtp_accounts (name, host, port, secure, user, pass, from_name, from_email, daily_limit, sent_today, is_active, priority)
+      VALUES (?, 'smtp.gmail.com', 587, 0, ?, 'app-pass-1234', 'Aparaitech Recruitment', ?, 500, 0, 1, ?)
+    `);
+
+    for (let i = 1; i <= 5; i++) {
+      insertAccount.run(`HR Sender Account #${i}`, `hr${i}@aparaitech.org`, `hr${i}@aparaitech.org`, i);
+    }
+
+    const accounts = smtpPool.getAvailableAccounts();
+    assert.strictEqual(accounts.length, 5, 'Expected 5 active SMTP accounts in pool');
+
+    // Test round robin order: 1 -> 2 -> 3 -> 4 -> 5 -> 1
+    const first = smtpPool.getNextAccount('round_robin');
+    const second = smtpPool.getNextAccount('round_robin');
+    const third = smtpPool.getNextAccount('round_robin');
+
+    assert.notStrictEqual(first.id, second.id, 'Expected different accounts in round robin');
+    assert.notStrictEqual(second.id, third.id, 'Expected different accounts in round robin');
+  });
+
+  // 11. Multi-SMTP Auto-Failover & Limit Switching Test
+  test('Multi-SMTP: Auto-switches to next sender when daily limit is reached or quota exceeded', () => {
+    const db = getDb();
+    const smtpPool = require('../services/smtpPool');
+
+    // Find first account and simulate daily limit reached
+    const accounts = db.prepare('SELECT * FROM smtp_accounts ORDER BY id ASC').all();
+    assert(accounts.length >= 2, 'Need at least 2 accounts for failover test');
+
+    const acc1 = accounts[0];
+    const acc2 = accounts[1];
+
+    // Set acc1 as exhausted (sent_today = 500 / daily_limit = 500)
+    db.prepare("UPDATE smtp_accounts SET sent_today = 500, daily_limit = 500, last_sent_date = ? WHERE id = ?").run(smtpPool.getTodayString(), acc1.id);
+
+    // Get next account in auto_failover mode - should skip acc1 and pick acc2
+    const nextAcc = smtpPool.getNextAccount('auto_failover');
+    assert.strictEqual(nextAcc.id, acc2.id, `Expected next available account (${acc2.user}), got ${nextAcc.user}`);
+  });
+
   console.log('\n====================================================');
   console.log(`📊 Test Results: ${passedTests} / ${totalTests} Passed (${Math.round((passedTests / totalTests) * 100)}%)`);
   console.log('====================================================');

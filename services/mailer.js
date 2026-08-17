@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { getDb } = require('../database/db');
+const smtpPool = require('./smtpPool');
 
 /**
  * Get current mailer configuration from database settings
@@ -28,12 +29,12 @@ async function verifySmtpConnection(customConfig = null) {
 
   try {
     const transporter = nodemailer.createTransport({
-      host: config.smtp_host,
+      host: config.smtp_host || 'smtp.gmail.com',
       port: parseInt(config.smtp_port, 10) || 587,
-      secure: config.smtp_secure === 'true' || config.smtp_port === '465',
+      secure: config.smtp_secure === 'true' || config.smtp_port === '465' || config.secure === 1 || config.secure === true,
       auth: {
-        user: config.smtp_user,
-        pass: config.smtp_pass
+        user: config.smtp_user || config.user,
+        pass: config.smtp_pass || config.pass
       },
       tls: {
         rejectUnauthorized: false
@@ -44,7 +45,7 @@ async function verifySmtpConnection(customConfig = null) {
     return {
       success: true,
       mode: 'smtp',
-      message: `Successfully connected to SMTP server (${config.smtp_host}:${config.smtp_port})`
+      message: `Successfully connected to SMTP server (${config.smtp_host || 'smtp.gmail.com'}:${config.smtp_port || 587}) for ${config.smtp_user || config.user}`
     };
   } catch (error) {
     return {
@@ -65,14 +66,27 @@ async function sendEmail({
   html,
   campaignId = null,
   studentId = null,
-  student = {}
+  student = {},
+  smtpAccount = null
 }) {
   const config = getMailerConfig();
   const startTime = Date.now();
 
-  const fromName = config.from_name || 'Aparaitech Software Recruitment Team';
-  const fromEmail = config.from_email || 'recruitment@aparaitech.org';
-  const replyTo = config.reply_to || 'careers@aparaitech.org';
+  const activeSmtp = smtpAccount || {
+    id: null,
+    host: config.smtp_host || 'smtp.gmail.com',
+    port: parseInt(config.smtp_port, 10) || 587,
+    secure: config.smtp_secure === 'true' || config.smtp_port === '465',
+    user: config.smtp_user || 'recruitment@aparaitech.org',
+    pass: config.smtp_pass || '',
+    from_name: config.from_name || 'Aparaitech Software Recruitment Team',
+    from_email: config.from_email || 'recruitment@aparaitech.org',
+    reply_to: config.reply_to || 'careers@aparaitech.org'
+  };
+
+  const fromName = activeSmtp.from_name || config.from_name || 'Aparaitech Software Recruitment Team';
+  const fromEmail = activeSmtp.from_email || activeSmtp.user || config.from_email || 'recruitment@aparaitech.org';
+  const replyTo = activeSmtp.reply_to || config.reply_to || 'careers@aparaitech.org';
 
   // 1. SANDBOX / SIMULATION MODE
   if (config.mailer_mode === 'sandbox') {
@@ -96,7 +110,9 @@ async function sendEmail({
         success: false,
         error: errorMsg,
         latencyMs: Date.now() - startTime,
-        mode: 'sandbox'
+        mode: 'sandbox',
+        smtpAccountId: activeSmtp.id,
+        smtpSender: fromEmail
       };
     }
 
@@ -119,23 +135,29 @@ async function sendEmail({
       console.error('Error saving to simulated inbox:', err.message);
     }
 
+    if (activeSmtp.id) {
+      smtpPool.recordSendSuccess(activeSmtp.id);
+    }
+
     return {
       success: true,
       messageId: `<sim-${Date.now()}-${Math.random().toString(36).substring(7)}@aparaitech.org>`,
       latencyMs: Date.now() - startTime,
-      mode: 'sandbox'
+      mode: 'sandbox',
+      smtpAccountId: activeSmtp.id,
+      smtpSender: fromEmail
     };
   }
 
   // 2. LIVE SMTP MODE
   try {
     const transporter = nodemailer.createTransport({
-      host: config.smtp_host,
-      port: parseInt(config.smtp_port, 10) || 587,
-      secure: config.smtp_secure === 'true' || config.smtp_port === '465',
+      host: activeSmtp.host || 'smtp.gmail.com',
+      port: parseInt(activeSmtp.port, 10) || 587,
+      secure: activeSmtp.secure === 1 || activeSmtp.secure === true || activeSmtp.port === 465 || activeSmtp.port === '465',
       auth: {
-        user: config.smtp_user,
-        pass: config.smtp_pass
+        user: activeSmtp.user,
+        pass: activeSmtp.pass
       },
       tls: {
         rejectUnauthorized: false
@@ -152,18 +174,32 @@ async function sendEmail({
 
     const info = await transporter.sendMail(mailOptions);
 
+    if (activeSmtp.id) {
+      smtpPool.recordSendSuccess(activeSmtp.id);
+    }
+
     return {
       success: true,
       messageId: info.messageId,
       latencyMs: Date.now() - startTime,
-      mode: 'smtp'
+      mode: 'smtp',
+      smtpAccountId: activeSmtp.id,
+      smtpSender: fromEmail
     };
   } catch (error) {
+    const isQuota = smtpPool.isQuotaError(error.message);
+    if (isQuota && activeSmtp.id) {
+      smtpPool.markLimitReached(activeSmtp.id);
+    }
+
     return {
       success: false,
+      isQuotaError: isQuota,
       error: error.message || 'Unknown SMTP transmission error',
       latencyMs: Date.now() - startTime,
-      mode: 'smtp'
+      mode: 'smtp',
+      smtpAccountId: activeSmtp.id,
+      smtpSender: fromEmail
     };
   }
 }
