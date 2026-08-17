@@ -19,11 +19,13 @@
   "author": "Aparaitech Software Recruitment Engineering",
   "license": "MIT",
   "dependencies": {
+    "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "mongodb": "^7.5.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.16",
-    "better-sqlite3": "^11.8.1",
     "xlsx": "^0.18.5"
   }
 }

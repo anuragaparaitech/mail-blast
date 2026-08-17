@@ -197,6 +197,19 @@ const api = {
     return this.request('/settings/smtp-accounts/reset-counters', { method: 'POST' });
   },
 
+  // MongoDB Atlas API
+  testMongoDb(uri) {
+    return this.request('/settings/test-mongodb', { method: 'POST', body: { uri } });
+  },
+
+  saveMongoDb(uri) {
+    return this.request('/settings/save-mongodb', { method: 'POST', body: { uri } });
+  },
+
+  syncToMongoDb(uri) {
+    return this.request('/settings/sync-to-mongodb', { method: 'POST', body: { uri } });
+  },
+
   // Mailbox Inspector
   getInbox(params = {}) {
     const query = new URLSearchParams(params).toString();

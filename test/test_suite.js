@@ -356,6 +356,19 @@ async function runTestSuite() {
     assert.strictEqual(nextAcc.id, acc2.id, `Expected next available account (${acc2.user}), got ${nextAcc.user}`);
   });
 
+  // 12. MongoDB Atlas Module & URI Validator Test
+  test('MongoDB Atlas: Driver initializes and properly handles URI connection validation', async () => {
+    const { testMongoConnection } = require('../database/mongo');
+
+    // Test empty URI validation
+    const emptyResult = await testMongoConnection('');
+    assert.strictEqual(emptyResult.success, false, 'Expected false for empty URI');
+
+    // Test invalid URI format validation
+    const invalidResult = await testMongoConnection('invalid-protocol://fake-host:1234');
+    assert.strictEqual(invalidResult.success, false, 'Expected false for invalid protocol URI');
+  });
+
   console.log('\n====================================================');
   console.log(`📊 Test Results: ${passedTests} / ${totalTests} Passed (${Math.round((passedTests / totalTests) * 100)}%)`);
   console.log('====================================================');

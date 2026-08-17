@@ -1,8 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { getDb } = require('./database/db');
 const { seedDatabase } = require('./database/seed');
+const { connectMongo } = require('./database/mongo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +13,13 @@ const PORT = process.env.PORT || 3000;
 try {
   getDb();
   seedDatabase();
+
+  // If MongoDB URI is configured in environment, connect to MongoDB Atlas
+  if (process.env.MONGODB_URI) {
+    connectMongo(process.env.MONGODB_URI).catch(err => {
+      console.warn('MongoDB Atlas auto-connect note:', err.message);
+    });
+  }
 } catch (err) {
   console.error('Database initialization error:', err);
 }

@@ -260,17 +260,64 @@ router.post('/smtp-accounts/reset-counters', (req, res) => {
   }
 });
 
-// POST /api/settings/test-smtp - Test default SMTP connection
-router.post('/test-smtp', async (req, res) => {
+// POST /api/settings/test-mongodb - Test MongoDB Atlas connection
+router.post('/test-mongodb', async (req, res) => {
   try {
-    const customConfig = req.body;
-    const result = await verifySmtpConnection(customConfig);
-
+    const { uri } = req.body;
+    const { testMongoConnection } = require('../database/mongo');
+    const result = await testMongoConnection(uri);
     if (result.success) {
       res.json(result);
     } else {
       res.status(400).json(result);
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/settings/save-mongodb - Save MongoDB URI and connect
+router.post('/save-mongodb', async (req, res) => {
+  try {
+    const { uri } = req.body;
+    const db = getDb();
+    const { connectMongo } = require('../database/mongo');
+
+    // Save URI to settings table
+    const updateStmt = db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES ('mongodb_uri', ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `);
+    updateStmt.run(uri || '');
+
+    if (uri && uri.trim()) {
+      const conn = await connectMongo(uri.trim());
+      if (!conn.success) {
+        return res.status(400).json(conn);
+      }
+      res.json({
+        success: true,
+        message: `Connected to MongoDB Atlas database "${conn.database}" successfully!`
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'MongoDB URI cleared. Using local database.'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/settings/sync-to-mongodb - Migrate all local SQLite data to MongoDB Atlas
+router.post('/sync-to-mongodb', async (req, res) => {
+  try {
+    const { uri } = req.body;
+    const { syncSqliteToMongo } = require('../database/mongo');
+    const result = await syncSqliteToMongo(uri);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
