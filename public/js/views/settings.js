@@ -142,7 +142,7 @@ const SettingsView = {
         </div>
 
         <!-- 4. Company Branding Card -->
-        <div class="card" style="margin-bottom: 24px;">
+        <div class="card">
           <div class="card-header">
             <h3 class="card-title">4. Aparaitech Corporate Branding</h3>
           </div>
@@ -163,65 +163,6 @@ const SettingsView = {
             <div class="form-group">
               <label class="form-label">Recruitment Inquiries Reply-To</label>
               <input type="email" id="replyToInput" class="form-input" value="${s.reply_to || 'careers@aparaitech.org'}" />
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Cloud Database Connection (MongoDB Atlas) -->
-        <div class="card">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-              <h3 class="card-title">5. Cloud Database Connection (MongoDB Atlas)</h3>
-              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
-                Connect to MongoDB Atlas Cloud Database for serverless hosting on Vercel/Render, high-availability, and team data syncing
-              </p>
-            </div>
-            <div>
-              <span class="badge ${s.mongodb_uri ? 'badge-success' : 'badge-info'}" style="font-size: 0.8rem; padding: 6px 14px;">
-                ${s.mongodb_uri ? '🍃 MongoDB Atlas Configured' : '💾 Local SQLite Active'}
-              </span>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-              <span>MongoDB Atlas Connection URI (Connection String)</span>
-              <a href="https://cloud.mongodb.com" target="_blank" rel="noopener noreferrer" style="font-size: 0.76rem; color: var(--brand-sapphire); font-weight: 600;">
-                Get Free MongoDB Atlas Cluster &rarr;
-              </a>
-            </label>
-            <div style="position: relative; display: flex; align-items: center;">
-              <input type="password" id="mongoUriInput" class="form-input" value="${s.mongodb_uri || ''}" placeholder="mongodb+srv://admin:YourPassword@cluster0.xxxxx.mongodb.net/mailblast?retryWrites=true&w=majority" style="padding-right: 42px; font-family: var(--font-mono); font-size: 0.85rem;" />
-              <button type="button" onclick="SettingsView.toggleMongoUriVisibility()" style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;" title="Show/Hide MongoDB URI">
-                👁️
-              </button>
-            </div>
-            <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;">
-              Format: <code>mongodb+srv://&lt;username&gt;:&lt;password&gt;@&lt;cluster-url&gt;/mailblast?retryWrites=true&amp;w=majority</code>. Stored securely.
-            </p>
-          </div>
-
-          <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 20px;">
-            <strong style="font-size: 0.86rem; color: var(--text-primary); display: block; margin-bottom: 6px;">💡 How MongoDB Atlas Cloud Works:</strong>
-            <ul style="margin: 0; padding-left: 20px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6;">
-              <li>When configured, candidates, templates, blast records, and SMTP pools will sync to your MongoDB Atlas cloud cluster.</li>
-              <li>Enables cross-device team access so recruiters in Bengaluru and Baramati see the exact same candidate pool.</li>
-              <li>You can click <strong>"Sync Local Data to MongoDB Atlas"</strong> anytime to push all your current SQLite records into MongoDB.</li>
-            </ul>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border-light); padding-top: 16px;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="SettingsView.testMongoConnection()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-              <span>Test Connection</span>
-            </button>
-            <div style="display: flex; gap: 10px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="SettingsView.syncToMongo()">
-                <span>🚀 Sync Local Data to MongoDB Atlas</span>
-              </button>
-              <button type="button" class="btn btn-primary btn-sm" onclick="SettingsView.saveMongoConnection()">
-                <span>Save &amp; Connect MongoDB</span>
-              </button>
             </div>
           </div>
         </div>
@@ -545,56 +486,6 @@ const SettingsView = {
     } catch (e) {
       if (btn) btn.disabled = false;
       app.showToast('Failed to save account: ' + e.message, 'error');
-    }
-  },
-
-  toggleMongoUriVisibility() {
-    const input = document.getElementById('mongoUriInput');
-    if (input) {
-      input.type = input.type === 'password' ? 'text' : 'password';
-    }
-  },
-
-  async testMongoConnection() {
-    const uri = document.getElementById('mongoUriInput')?.value || '';
-    if (!uri) {
-      return app.showToast('Please enter a MongoDB connection URI to test.', 'error');
-    }
-
-    app.showToast('Testing MongoDB Atlas cloud connection...', 'info');
-    try {
-      const res = await api.testMongoDb(uri);
-      app.showToast(res.message || 'Successfully connected to MongoDB Atlas!', 'success');
-    } catch (e) {
-      app.showToast('MongoDB Connection Failed: ' + e.message, 'error');
-    }
-  },
-
-  async saveMongoConnection() {
-    const uri = document.getElementById('mongoUriInput')?.value || '';
-    app.showToast('Connecting & saving MongoDB Atlas URI...', 'info');
-
-    try {
-      const res = await api.saveMongoDb(uri);
-      app.showToast(res.message, 'success');
-      this.render(document.getElementById('viewContainer'));
-    } catch (e) {
-      app.showToast('Failed to connect MongoDB: ' + e.message, 'error');
-    }
-  },
-
-  async syncToMongo() {
-    const uri = document.getElementById('mongoUriInput')?.value || '';
-    if (!confirm('This will copy and synchronize all current candidates, templates, and SMTP accounts directly into your MongoDB Atlas cloud database. Proceed?')) {
-      return;
-    }
-
-    app.showToast('Synchronizing local database with MongoDB Atlas cloud...', 'info');
-    try {
-      const res = await api.syncToMongoDb(uri);
-      app.showToast(res.message, 'success');
-    } catch (e) {
-      app.showToast('Sync failed: ' + e.message, 'error');
     }
   }
 };
