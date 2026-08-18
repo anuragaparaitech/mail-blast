@@ -114,6 +114,9 @@ router.get('/:id/recipients', (req, res) => {
   }
 });
 
+const { getPersistentMongoDb } = require('../database/mongo');
+const { ObjectId } = require('mongodb');
+
 // POST /api/campaigns - Launch a new email blast campaign
 router.post('/', async (req, res) => {
   try {
@@ -138,30 +141,77 @@ router.post('/', async (req, res) => {
     // Determine target students
     let targetStudents = [];
 
-    if (target_type === 'selected' && Array.isArray(selected_student_ids) && selected_student_ids.length > 0) {
-      const placeholders = selected_student_ids.map(() => '?').join(',');
-      targetStudents = db.prepare(`SELECT * FROM students WHERE id IN (${placeholders}) AND status = 'Active'`).all(...selected_student_ids);
-    } else if (target_type === 'college' && Array.isArray(target_colleges) && target_colleges.length > 0) {
-      const placeholders = target_colleges.map(() => '?').join(',');
-      targetStudents = db.prepare(`SELECT * FROM students WHERE college IN (${placeholders}) AND status = 'Active'`).all(...target_colleges);
-    } else if (target_type === 'batch' && Array.isArray(target_batches) && target_batches.length > 0) {
-      const placeholders = target_batches.map(() => '?').join(',');
-      targetStudents = db.prepare(`SELECT * FROM students WHERE batch IN (${placeholders}) AND status = 'Active'`).all(...target_batches);
-    } else if (target_type === 'import_batch' || target_type === 'upload_batch') {
-      const batchIds = target_upload_batches.length > 0 ? target_upload_batches : (target_batch_id ? [target_batch_id] : []);
-      if (batchIds.length > 0) {
-        const placeholders = batchIds.map(() => '?').join(',');
-        targetStudents = db.prepare(`SELECT * FROM students WHERE import_batch_id IN (${placeholders}) AND status = 'Active'`).all(...batchIds);
+    // 1. Try fetching from MongoDB Atlas if active
+    if (process.env.MONGODB_URI) {
+      try {
+        const mongo = await getPersistentMongoDb();
+        const mongoFilter = { status: { $ne: 'Inactive' } };
+
+        if (target_type === 'selected' && Array.isArray(selected_student_ids) && selected_student_ids.length > 0) {
+          const objIds = selected_student_ids.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+          const strIds = selected_student_ids.map(id => String(id));
+          const numIds = selected_student_ids.map(id => Number(id)).filter(n => !isNaN(n));
+          mongoFilter.$or = [
+            ...(objIds.length ? [{ _id: { $in: objIds } }] : []),
+            ...(strIds.length ? [{ id: { $in: strIds } }] : []),
+            ...(numIds.length ? [{ sqlite_id: { $in: numIds } }] : [])
+          ];
+        } else if (target_type === 'college' && Array.isArray(target_colleges) && target_colleges.length > 0) {
+          mongoFilter.college = { $in: target_colleges };
+        } else if (target_type === 'batch' && Array.isArray(target_batches) && target_batches.length > 0) {
+          mongoFilter.batch = { $in: target_batches };
+        } else if (target_type === 'import_batch' || target_type === 'upload_batch') {
+          const batchIds = target_upload_batches.length > 0 ? target_upload_batches : (target_batch_id ? [target_batch_id] : []);
+          if (batchIds.length > 0) {
+            mongoFilter.import_batch_id = { $in: batchIds };
+          }
+        }
+
+        const mongoResults = await mongo.collection('students').find(mongoFilter).toArray();
+        if (mongoResults && mongoResults.length > 0) {
+          targetStudents = mongoResults.map((s, idx) => ({
+            id: s.sqlite_id || idx + 1,
+            mongo_id: String(s._id),
+            name: s.name || 'Candidate',
+            email: s.email,
+            college: s.college || 'Aparaitech Partner College',
+            phone: s.phone || '',
+            branch: s.branch || 'Computer Science',
+            batch: s.batch || '2026'
+          }));
+        }
+      } catch (mongoErr) {
+        console.warn('MongoDB target students query error, falling back to SQLite:', mongoErr.message);
       }
-    } else {
-      // Default: All active students
-      targetStudents = db.prepare("SELECT * FROM students WHERE status = 'Active'").all();
+    }
+
+    // 2. Fallback to SQLite if targetStudents is still empty
+    if (targetStudents.length === 0) {
+      if (target_type === 'selected' && Array.isArray(selected_student_ids) && selected_student_ids.length > 0) {
+        const placeholders = selected_student_ids.map(() => '?').join(',');
+        targetStudents = db.prepare(`SELECT * FROM students WHERE id IN (${placeholders}) AND status = 'Active'`).all(...selected_student_ids);
+      } else if (target_type === 'college' && Array.isArray(target_colleges) && target_colleges.length > 0) {
+        const placeholders = target_colleges.map(() => '?').join(',');
+        targetStudents = db.prepare(`SELECT * FROM students WHERE college IN (${placeholders}) AND status = 'Active'`).all(...target_colleges);
+      } else if (target_type === 'batch' && Array.isArray(target_batches) && target_batches.length > 0) {
+        const placeholders = target_batches.map(() => '?').join(',');
+        targetStudents = db.prepare(`SELECT * FROM students WHERE batch IN (${placeholders}) AND status = 'Active'`).all(...target_batches);
+      } else if (target_type === 'import_batch' || target_type === 'upload_batch') {
+        const batchIds = target_upload_batches.length > 0 ? target_upload_batches : (target_batch_id ? [target_batch_id] : []);
+        if (batchIds.length > 0) {
+          const placeholders = batchIds.map(() => '?').join(',');
+          targetStudents = db.prepare(`SELECT * FROM students WHERE import_batch_id IN (${placeholders}) AND status = 'Active'`).all(...batchIds);
+        }
+      } else {
+        // Default: All active students
+        targetStudents = db.prepare("SELECT * FROM students WHERE status = 'Active'").all();
+      }
     }
 
     if (targetStudents.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No active student recipients found for the selected audience criteria.'
+        message: 'No active student recipients found for the selected audience criteria. Please check your candidate pool or upload a student list.'
       });
     }
 
@@ -202,7 +252,7 @@ router.post('/', async (req, res) => {
       for (const student of targetStudents) {
         insertRecipStmt.run(
           campaignId,
-          student.id,
+          student.id || null,
           student.name,
           student.email,
           student.college,
@@ -213,8 +263,7 @@ router.post('/', async (req, res) => {
 
     insertTx();
 
-    // Persist the campaign queue before the background sender starts. This is
-    // essential on Vercel, where the SQLite working database is temporary.
+    // Persist the campaign queue before the background sender starts.
     if (process.env.MONGODB_URI) {
       await syncCampaignDelivery(campaignId);
     }
@@ -245,10 +294,25 @@ router.post('/test-send', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Test email address is required.' });
     }
 
-    const db = getDb();
     let sampleStudent = null;
     if (studentId) {
-      sampleStudent = db.prepare('SELECT * FROM students WHERE id = ?').get(studentId);
+      if (process.env.MONGODB_URI) {
+        try {
+          const mongo = await getPersistentMongoDb();
+          if (ObjectId.isValid(studentId)) {
+            sampleStudent = await mongo.collection('students').findOne({ _id: new ObjectId(studentId) });
+          }
+        } catch (e) {}
+      }
+      if (!sampleStudent) {
+        sampleStudent = db.prepare('SELECT * FROM students WHERE id = ?').get(studentId);
+      }
+    }
+    if (!sampleStudent && process.env.MONGODB_URI) {
+      try {
+        const mongo = await getPersistentMongoDb();
+        sampleStudent = await mongo.collection('students').findOne({});
+      } catch (e) {}
     }
     if (!sampleStudent) {
       sampleStudent = db.prepare('SELECT * FROM students LIMIT 1').get() || {

@@ -111,8 +111,11 @@ router.delete('/:id', (req, res) => {
   }
 });
 
+const { getPersistentMongoDb } = require('../database/mongo');
+const { ObjectId } = require('mongodb');
+
 // POST /api/templates/preview - Live render subject & body for a selected student
-router.post('/preview', (req, res) => {
+router.post('/preview', async (req, res) => {
   try {
     const { subject = '', body_html = '', apply_link = 'https://aparaitech.org/apply', studentId, customStudent = null } = req.body;
     const db = getDb();
@@ -120,7 +123,24 @@ router.post('/preview', (req, res) => {
     let studentData = customStudent;
 
     if (studentId) {
-      studentData = db.prepare('SELECT * FROM students WHERE id = ?').get(studentId);
+      if (process.env.MONGODB_URI) {
+        try {
+          const mongo = await getPersistentMongoDb();
+          if (ObjectId.isValid(studentId)) {
+            studentData = await mongo.collection('students').findOne({ _id: new ObjectId(studentId) });
+          }
+        } catch (e) {}
+      }
+      if (!studentData) {
+        studentData = db.prepare('SELECT * FROM students WHERE id = ?').get(studentId);
+      }
+    }
+
+    if (!studentData && process.env.MONGODB_URI) {
+      try {
+        const mongo = await getPersistentMongoDb();
+        studentData = await mongo.collection('students').findOne({});
+      } catch (e) {}
     }
 
     if (!studentData) {
