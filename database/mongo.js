@@ -272,6 +272,56 @@ async function syncSqliteToMongo(uri = null) {
   };
 }
 
+/** Persist a campaign and its recipient delivery records after each send. */
+async function syncCampaignDelivery(campaignId, recipientId = null) {
+  const db = await getPersistentMongoDb();
+  const sqlite = getDb();
+  const campaign = sqlite.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+  if (!campaign) return;
+
+  await db.collection('campaigns').updateOne(
+    { sqlite_id: campaign.id },
+    { $set: { ...campaign, sqlite_id: campaign.id, synced_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+
+  const recipientSql = recipientId
+    ? 'SELECT * FROM campaign_recipients WHERE id = ?'
+    : 'SELECT * FROM campaign_recipients WHERE campaign_id = ?';
+  const recipients = recipientId
+    ? sqlite.prepare(recipientSql).all(recipientId)
+    : sqlite.prepare(recipientSql).all(campaignId);
+  if (recipients.length) {
+    await db.collection('campaign_recipients').bulkWrite(recipients.map(recipient => ({
+      updateOne: {
+        filter: { sqlite_id: recipient.id, campaign_sqlite_id: campaign.id },
+        update: { $set: { ...recipient, sqlite_id: recipient.id, campaign_sqlite_id: campaign.id, synced_at: new Date().toISOString() } },
+        upsert: true
+      }
+    })));
+  }
+
+  const inboxRows = sqlite.prepare('SELECT * FROM simulated_inbox WHERE campaign_id = ?').all(campaignId);
+  if (inboxRows.length) {
+    await db.collection('simulated_inbox').bulkWrite(inboxRows.map(message => ({
+      updateOne: {
+        filter: { sqlite_id: message.id },
+        update: { $set: { ...message, sqlite_id: message.id, synced_at: new Date().toISOString() } },
+        upsert: true
+      }
+    })));
+  }
+}
+
+async function syncSmtpConfiguration() {
+  const db = await getPersistentMongoDb();
+  const sqlite = getDb();
+  const settings = sqlite.prepare('SELECT * FROM settings').all();
+  const accounts = sqlite.prepare('SELECT * FROM smtp_accounts').all();
+  if (settings.length) await db.collection('settings').bulkWrite(settings.map(setting => ({ updateOne: { filter: { key: setting.key }, update: { $set: setting }, upsert: true } })));
+  if (accounts.length) await db.collection('smtp_accounts').bulkWrite(accounts.map(account => ({ updateOne: { filter: { sqlite_id: account.id }, update: { $set: { ...account, sqlite_id: account.id } }, upsert: true } })));
+}
+
 function getMongoDb() {
   return mongoDb;
 }
@@ -284,6 +334,8 @@ module.exports = {
   connectMongo,
   testMongoConnection,
   syncSqliteToMongo,
+  syncCampaignDelivery,
+  syncSmtpConfiguration,
   getMongoDb,
   getPersistentMongoDb,
   isMongoActive

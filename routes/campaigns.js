@@ -5,6 +5,7 @@ const { getDb } = require('../database/db');
 const blastManager = require('../services/blastManager');
 const { sendEmail } = require('../services/mailer');
 const { renderText } = require('../services/templateEngine');
+const { syncCampaignDelivery } = require('../database/mongo');
 
 // GET /api/campaigns - List all campaigns
 router.get('/', (req, res) => {
@@ -211,6 +212,12 @@ router.post('/', async (req, res) => {
     });
 
     insertTx();
+
+    // Persist the campaign queue before the background sender starts. This is
+    // essential on Vercel, where the SQLite working database is temporary.
+    if (process.env.MONGODB_URI) {
+      await syncCampaignDelivery(campaignId);
+    }
 
     // Start background mail blast
     blastManager.startCampaign(campaignId).catch(err => {

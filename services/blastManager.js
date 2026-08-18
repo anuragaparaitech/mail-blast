@@ -3,6 +3,7 @@ const { getDb } = require('../database/db');
 const { renderText } = require('./templateEngine');
 const { sendEmail, getMailerConfig } = require('./mailer');
 const smtpPool = require('./smtpPool');
+const { syncCampaignDelivery } = require('../database/mongo');
 
 class BlastManager extends EventEmitter {
   constructor() {
@@ -278,6 +279,12 @@ class BlastManager extends EventEmitter {
               failed_count = failed_count + 1
           WHERE id = ?
         `).run(campaignId);
+      }
+
+      // Store every delivery result in Atlas before moving to the next email.
+      // A serverless process can stop at any time after the HTTP response.
+      if (process.env.MONGODB_URI) {
+        await syncCampaignDelivery(campaignId, recipient.id);
       }
 
       state.processedCount++;

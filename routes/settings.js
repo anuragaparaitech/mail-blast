@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDb } = require('../database/db');
 const { verifySmtpConnection, getMailerConfig } = require('../services/mailer');
 const smtpPool = require('../services/smtpPool');
+const { syncSmtpConfiguration } = require('../database/mongo');
 
 // GET /api/settings - Fetch all settings as key-value object
 router.get('/', (req, res) => {
@@ -24,7 +25,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/settings - Update settings
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const db = getDb();
     const updates = req.body; // e.g. { mailer_mode: 'sandbox', send_delay_ms: 300, smtp_pass: '...', ... }
@@ -49,6 +50,8 @@ router.post('/', (req, res) => {
     });
 
     updateTx();
+
+    if (process.env.MONGODB_URI) await syncSmtpConfiguration();
 
     res.json({ success: true, message: 'Settings & SMTP credentials saved successfully!' });
   } catch (error) {
@@ -81,7 +84,7 @@ router.get('/smtp-accounts', (req, res) => {
 });
 
 // POST /api/settings/smtp-accounts - Add new SMTP account
-router.post('/smtp-accounts', (req, res) => {
+router.post('/smtp-accounts', async (req, res) => {
   try {
     const db = getDb();
     const {
@@ -125,6 +128,7 @@ router.post('/smtp-accounts', (req, res) => {
     );
 
     const newAccount = db.prepare('SELECT * FROM smtp_accounts WHERE id = ?').get(result.lastInsertRowid);
+    if (process.env.MONGODB_URI) await syncSmtpConfiguration();
     res.status(201).json({
       success: true,
       message: `SMTP sender account "${name}" created successfully!`,
@@ -136,7 +140,7 @@ router.post('/smtp-accounts', (req, res) => {
 });
 
 // PUT /api/settings/smtp-accounts/:id - Update SMTP account
-router.put('/smtp-accounts/:id', (req, res) => {
+router.put('/smtp-accounts/:id', async (req, res) => {
   try {
     const db = getDb();
     const { id } = req.params;
@@ -185,6 +189,7 @@ router.put('/smtp-accounts/:id', (req, res) => {
     );
 
     const updated = db.prepare('SELECT * FROM smtp_accounts WHERE id = ?').get(id);
+    if (process.env.MONGODB_URI) await syncSmtpConfiguration();
     res.json({
       success: true,
       message: `SMTP sender account "${updated.name}" updated successfully!`,
@@ -196,7 +201,7 @@ router.put('/smtp-accounts/:id', (req, res) => {
 });
 
 // PATCH /api/settings/smtp-accounts/:id/toggle - Toggle active status
-router.patch('/smtp-accounts/:id/toggle', (req, res) => {
+router.patch('/smtp-accounts/:id/toggle', async (req, res) => {
   try {
     const db = getDb();
     const { id } = req.params;
@@ -207,6 +212,7 @@ router.patch('/smtp-accounts/:id/toggle', (req, res) => {
 
     const newStatus = account.is_active === 1 ? 0 : 1;
     db.prepare('UPDATE smtp_accounts SET is_active = ?, updated_at = datetime("now") WHERE id = ?').run(newStatus, id);
+    if (process.env.MONGODB_URI) await syncSmtpConfiguration();
 
     res.json({
       success: true,
@@ -219,7 +225,7 @@ router.patch('/smtp-accounts/:id/toggle', (req, res) => {
 });
 
 // DELETE /api/settings/smtp-accounts/:id - Delete SMTP account
-router.delete('/smtp-accounts/:id', (req, res) => {
+router.delete('/smtp-accounts/:id', async (req, res) => {
   try {
     const db = getDb();
     const { id } = req.params;
@@ -228,6 +234,8 @@ router.delete('/smtp-accounts/:id', (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ success: false, message: 'SMTP account not found.' });
     }
+
+    if (process.env.MONGODB_URI) await syncSmtpConfiguration();
 
     res.json({ success: true, message: 'SMTP sender account removed from pool.' });
   } catch (error) {
