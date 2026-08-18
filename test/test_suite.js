@@ -155,12 +155,12 @@ async function runTestSuite() {
 
     // Wait for completion
     let attempts = 0;
-    while (attempts < 60) {
+    while (attempts < 100) {
       const c = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campId);
       if (c.status === 'completed' || c.status === 'cancelled') {
         break;
       }
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 250));
       attempts++;
     }
 

@@ -1,17 +1,23 @@
 const { MongoClient } = require('mongodb');
-const { getDb } = require('./db');
+const { getDb, DEFAULT_SMTP_ACCOUNTS } = require('./db');
+
+const DEFAULT_MONGODB_URI = "mongodb+srv://anuragaparaitech_db_user:3vkPtfwjR9gTUdu3@m0cluster.enzenq7.mongodb.net/mailblast?retryWrites=true&w=majority&appName=M0cluster";
 
 let mongoClient = null;
 let mongoDb = null;
 let isConnected = false;
-let currentUri = process.env.MONGODB_URI || '';
+let currentUri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
 let connectionPromise = null;
+
+if (!process.env.MONGODB_URI) {
+  process.env.MONGODB_URI = DEFAULT_MONGODB_URI;
+}
 
 /**
  * Connect to MongoDB Atlas
  */
 async function connectMongo(uri = null) {
-  const targetUri = uri || process.env.MONGODB_URI;
+  const targetUri = uri || process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
   if (!targetUri) {
     return { success: false, message: 'No MongoDB URI provided.' };
   }
@@ -138,8 +144,35 @@ async function ensureMongoIndexes(db) {
 
     // SMTP accounts collection
     await db.collection('smtp_accounts').createIndex({ is_active: 1 });
+
+    // Auto-sync the 5 primary SMTP accounts with their credentials
+    if (DEFAULT_SMTP_ACCOUNTS && DEFAULT_SMTP_ACCOUNTS.length > 0) {
+      const ops = DEFAULT_SMTP_ACCOUNTS.map(a => ({
+        updateOne: {
+          filter: { user: a.user },
+          update: {
+            $set: {
+              name: a.name,
+              host: a.host,
+              port: a.port,
+              secure: a.secure,
+              user: a.user,
+              pass: a.pass,
+              from_name: a.from_name,
+              from_email: a.from_email,
+              reply_to: a.reply_to,
+              daily_limit: a.daily_limit,
+              is_active: a.is_active,
+              priority: a.priority
+            }
+          },
+          upsert: true
+        }
+      }));
+      await db.collection('smtp_accounts').bulkWrite(ops);
+    }
   } catch (err) {
-    console.error('Error creating MongoDB indexes:', err.message);
+    console.error('Error creating MongoDB indexes / syncing default accounts:', err.message);
   }
 }
 

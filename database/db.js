@@ -113,41 +113,130 @@ function initDefaultSettings(database) {
   insertTx();
 }
 
+const DEFAULT_SMTP_ACCOUNTS = [
+  {
+    name: 'Anurag Primary Sender',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: 0,
+    user: 'anurag.aparaitech@gmail.com',
+    pass: 'kmnitimmwqmbzoha',
+    from_name: 'Aparaitech Software Recruitment Team',
+    from_email: 'anurag.aparaitech@gmail.com',
+    reply_to: 'careers@aparaitech.org',
+    daily_limit: 500,
+    priority: 1,
+    is_active: 1
+  },
+  {
+    name: 'Vivek Tech Recruitment',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: 0,
+    user: 'vivek.aparaitech@gmail.com',
+    pass: 'lsejhomvrffjuawu',
+    from_name: 'Aparaitech Software Recruitment Team',
+    from_email: 'vivek.aparaitech@gmail.com',
+    reply_to: 'careers@aparaitech.org',
+    daily_limit: 500,
+    priority: 2,
+    is_active: 1
+  },
+  {
+    name: 'Anurag00 Campus Outreach',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: 0,
+    user: 'anurag00.aparaitech@gmail.com',
+    pass: 'kkrrxmqkhbmcaplq',
+    from_name: 'Aparaitech Software Recruitment Team',
+    from_email: 'anurag00.aparaitech@gmail.com',
+    reply_to: 'careers@aparaitech.org',
+    daily_limit: 500,
+    priority: 3,
+    is_active: 1
+  },
+  {
+    name: 'Anurag01 Talent Acquisition',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: 0,
+    user: 'anurag01.aparaitech@gmail.com',
+    pass: 'tfyykuuavxpamjvo',
+    from_name: 'Aparaitech Software Recruitment Team',
+    from_email: 'anurag01.aparaitech@gmail.com',
+    reply_to: 'careers@aparaitech.org',
+    daily_limit: 500,
+    priority: 4,
+    is_active: 1
+  },
+  {
+    name: 'Kshitij HR Operations',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: 0,
+    user: 'kshitij.aparaitech@gmail.com',
+    pass: 'zxlwpwxwwskdfmwh',
+    from_name: 'Aparaitech Software Recruitment Team',
+    from_email: 'kshitij.aparaitech@gmail.com',
+    reply_to: 'careers@aparaitech.org',
+    daily_limit: 500,
+    priority: 5,
+    is_active: 1
+  }
+];
+
 function migrateExistingSmtpToAccounts(database) {
   try {
-    const count = database.prepare('SELECT COUNT(*) as c FROM smtp_accounts').get().c;
-    if (count === 0) {
-      const getSetting = (k) => {
-        const row = database.prepare('SELECT value FROM settings WHERE key = ?').get(k);
-        return row ? row.value : '';
-      };
+    const existingAccounts = database.prepare('SELECT * FROM smtp_accounts').all();
+    const existingUsers = new Set(existingAccounts.map(a => a.user.toLowerCase()));
 
-      const user = getSetting('smtp_user') || 'recruitment@aparaitech.org';
-      const pass = getSetting('smtp_pass') || '';
-      const host = getSetting('smtp_host') || 'smtp.gmail.com';
-      const port = parseInt(getSetting('smtp_port') || '587', 10);
-      const secure = getSetting('smtp_secure') === 'true' ? 1 : 0;
-      const fromName = getSetting('from_name') || 'Aparaitech Software Recruitment Team';
-      const fromEmail = getSetting('from_email') || user;
-      const replyTo = getSetting('reply_to') || 'careers@aparaitech.org';
+    const insertStmt = database.prepare(`
+      INSERT INTO smtp_accounts (name, host, port, secure, user, pass, from_name, from_email, reply_to, daily_limit, sent_today, is_active, priority)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `);
 
-      database.prepare(`
-        INSERT INTO smtp_accounts (name, host, port, secure, user, pass, from_name, from_email, reply_to, daily_limit, sent_today, is_active, priority)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 500, 0, 1, 1)
-      `).run(
-        'Primary Sender Account (Default)',
-        host,
-        port,
-        secure,
-        user,
-        pass,
-        fromName,
-        fromEmail,
-        replyTo
-      );
-    }
+    const updatePassStmt = database.prepare(`
+      UPDATE smtp_accounts 
+      SET pass = ?, host = ?, port = ?, from_name = ?, from_email = ?, reply_to = ?, is_active = 1
+      WHERE user = ?
+    `);
+
+    const tx = database.transaction(() => {
+      for (const acc of DEFAULT_SMTP_ACCOUNTS) {
+        if (!existingUsers.has(acc.user.toLowerCase())) {
+          insertStmt.run(
+            acc.name,
+            acc.host,
+            acc.port,
+            acc.secure,
+            acc.user,
+            acc.pass,
+            acc.from_name,
+            acc.from_email,
+            acc.reply_to,
+            acc.daily_limit,
+            acc.is_active,
+            acc.priority
+          );
+        } else {
+          // Keep credentials up to date
+          updatePassStmt.run(
+            acc.pass,
+            acc.host,
+            acc.port,
+            acc.from_name,
+            acc.from_email,
+            acc.reply_to,
+            acc.user
+          );
+        }
+      }
+    });
+
+    tx();
   } catch (e) {
-    // ignore
+    console.error('Error seeding SMTP accounts in db.js:', e.message);
   }
 }
 

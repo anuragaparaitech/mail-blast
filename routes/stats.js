@@ -2,9 +2,69 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../database/db');
 
+const { getPersistentMongoDb } = require('../database/mongo');
+
 // GET /api/stats/dashboard - High-level metrics for dashboard
-router.get('/dashboard', (req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
+    if (process.env.MONGODB_URI) {
+      try {
+        const mongo = await getPersistentMongoDb();
+        const [studentCount, collegeAgg, batchGroups, campaignsMongo, deliveriesMongo] = await Promise.all([
+          mongo.collection('students').countDocuments({ status: 'Active' }),
+          mongo.collection('students').aggregate([
+            { $match: { college: { $nin: [null, ''] } } },
+            { $group: { _id: '$college', student_count: { $sum: 1 } } },
+            { $project: { _id: 0, college: '$_id', student_count: 1 } },
+            { $sort: { student_count: -1 } },
+            { $limit: 8 }
+          ]).toArray(),
+          mongo.collection('students').aggregate([
+            { $match: { batch: { $nin: [null, ''] } } },
+            { $group: { _id: '$batch', count: { $sum: 1 } } },
+            { $project: { _id: 0, batch: '$_id', count: 1 } },
+            { $sort: { batch: -1 } }
+          ]).toArray(),
+          mongo.collection('campaigns').find({}).sort({ _id: -1 }).limit(5).toArray(),
+          mongo.collection('campaign_recipients').find({ status: { $in: ['sent', 'failed'] } }).sort({ _id: -1 }).limit(8).toArray()
+        ]);
+
+        const distinctColleges = await mongo.collection('students').distinct('college', { college: { $nin: [null, ''] } });
+
+        let totalSent = 0;
+        let totalSuccess = 0;
+        let totalFailed = 0;
+        campaignsMongo.forEach(c => {
+          totalSent += (c.sent_count || 0);
+          totalSuccess += (c.success_count || 0);
+          totalFailed += (c.failed_count || 0);
+        });
+
+        const overallSuccessRate = totalSent > 0
+          ? Math.round((totalSuccess / totalSent) * 100)
+          : 100;
+
+        return res.json({
+          success: true,
+          stats: {
+            totalStudents: studentCount,
+            totalColleges: distinctColleges.length,
+            totalCampaigns: campaignsMongo.length,
+            totalEmailsSent: totalSent,
+            totalSuccess: totalSuccess,
+            totalFailed: totalFailed,
+            successRate: overallSuccessRate,
+            collegeDistribution: collegeAgg,
+            batchBreakdown: batchGroups,
+            recentCampaigns: campaignsMongo.map(c => ({ ...c, id: c.sqlite_id || String(c._id) })),
+            recentDeliveries: deliveriesMongo.map(r => ({ ...r, id: r.sqlite_id || String(r._id) }))
+          }
+        });
+      } catch (mongoErr) {
+        console.warn('MongoDB stats fallback to SQLite:', mongoErr.message);
+      }
+    }
+
     const db = getDb();
 
     // 1. Total active students

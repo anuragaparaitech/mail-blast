@@ -1,4 +1,9 @@
 require('dotenv').config();
+const DEFAULT_MONGODB_URI = "mongodb+srv://anuragaparaitech_db_user:3vkPtfwjR9gTUdu3@m0cluster.enzenq7.mongodb.net/mailblast?retryWrites=true&w=majority&appName=M0cluster";
+if (!process.env.MONGODB_URI) {
+  process.env.MONGODB_URI = DEFAULT_MONGODB_URI;
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -14,12 +19,10 @@ try {
   getDb();
   seedDatabase();
 
-  // If MongoDB URI is configured in environment, connect to MongoDB Atlas
-  if (process.env.MONGODB_URI) {
-    getPersistentMongoDb().catch(err => {
-      console.warn('MongoDB Atlas auto-connect note:', err.message);
-    });
-  }
+  // Connect to MongoDB Atlas
+  getPersistentMongoDb().catch(err => {
+    console.warn('MongoDB Atlas auto-connect note:', err.message);
+  });
 } catch (err) {
   console.error('Database initialization error:', err);
 }
