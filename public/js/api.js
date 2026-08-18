@@ -130,10 +130,6 @@ const api = {
     return this.request('/campaigns', { method: 'POST', body: data });
   },
 
-  sendTestEmail(data) {
-    return this.request('/campaigns/test-send', { method: 'POST', body: data });
-  },
-
   pauseCampaign(id) {
     return this.request(`/campaigns/${id}/pause`, { method: 'POST' });
   },
@@ -210,17 +206,4 @@ const api = {
     return this.request('/settings/sync-to-mongodb', { method: 'POST', body: { uri } });
   },
 
-  // Mailbox Inspector
-  getInbox(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    return this.request(`/inbox?${query}`);
-  },
-
-  getInboxEmail(id) {
-    return this.request(`/inbox/${id}`);
-  },
-
-  clearInbox() {
-    return this.request('/inbox/clear', { method: 'DELETE' });
-  }
 };

@@ -301,16 +301,6 @@ async function syncCampaignDelivery(campaignId, recipientId = null) {
     })));
   }
 
-  const inboxRows = sqlite.prepare('SELECT * FROM simulated_inbox WHERE campaign_id = ?').all(campaignId);
-  if (inboxRows.length) {
-    await db.collection('simulated_inbox').bulkWrite(inboxRows.map(message => ({
-      updateOne: {
-        filter: { sqlite_id: message.id },
-        update: { $set: { ...message, sqlite_id: message.id, synced_at: new Date().toISOString() } },
-        upsert: true
-      }
-    })));
-  }
 }
 
 async function syncSmtpConfiguration() {

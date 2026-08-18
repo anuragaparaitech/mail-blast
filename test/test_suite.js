@@ -121,7 +121,7 @@ async function runTestSuite() {
   });
 
   // 4. Blast Campaign Queue & Execution
-  await testAsync('Blast Manager: Creates campaign, executes queue in sandbox mode, and logs delivery', async () => {
+  await testAsync('Blast Manager: Creates campaign and records delivery outcomes', async () => {
     const db = getDb();
     
     // Pick 3 students

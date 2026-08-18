@@ -13,7 +13,6 @@ class App {
       'composer': ComposerView,
       'blast-monitor': BlastMonitorView,
       'history': HistoryView,
-      'inbox': InboxView,
       'settings': SettingsView,
       'demo-tour': DemoTourView
     };
@@ -51,7 +50,7 @@ class App {
       const settings = data.settings || {};
       const badge = document.getElementById('envBadgeText');
       if (badge) {
-        badge.textContent = settings.mailer_mode === 'smtp' ? 'Live SMTP' : 'Sandbox Mode';
+        badge.textContent = 'Live SMTP';
       }
     } catch (err) {
       console.error('Settings badge error:', err);

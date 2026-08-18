@@ -19,14 +19,6 @@ function getMailerConfig() {
 async function verifySmtpConnection(customConfig = null) {
   const config = customConfig || getMailerConfig();
 
-  if (config.mailer_mode === 'sandbox') {
-    return {
-      success: true,
-      mode: 'sandbox',
-      message: 'Sandbox / Simulator mode is active. Real emails will not be sent to external inboxes, but will be captured in the Student Mailbox Inspector.'
-    };
-  }
-
   try {
     const transporter = nodemailer.createTransport({
       host: config.smtp_host || 'smtp.gmail.com',
@@ -57,7 +49,7 @@ async function verifySmtpConnection(customConfig = null) {
 }
 
 /**
- * Send an email (via real SMTP or high-fidelity sandbox)
+ * Send an email through the configured SMTP account.
  */
 async function sendEmail({
   to,
@@ -88,68 +80,7 @@ async function sendEmail({
   const fromEmail = activeSmtp.from_email || activeSmtp.user || config.from_email || 'recruitment@aparaitech.org';
   const replyTo = activeSmtp.reply_to || config.reply_to || 'careers@aparaitech.org';
 
-  // 1. SANDBOX / SIMULATION MODE
-  if (config.mailer_mode === 'sandbox') {
-    // Simulate network delay
-    const delay = Math.floor(Math.random() * 120) + 80;
-    await new Promise(resolve => setTimeout(resolve, delay));
-
-    // Check simulated failure rate
-    const failureRate = parseInt(config.simulate_failure_rate || '0', 10);
-    const shouldFail = failureRate > 0 && Math.random() * 100 < failureRate;
-
-    if (shouldFail) {
-      const simulatedErrors = [
-        '550 5.1.1 User unknown / Mailbox unavailable',
-        '421 4.7.0 Connection rate limit exceeded by recipient MX',
-        '554 5.7.1 Relay access denied for recipient domain',
-        'ETIMEDOUT: Connection to mail server timed out after 3000ms'
-      ];
-      const errorMsg = simulatedErrors[Math.floor(Math.random() * simulatedErrors.length)];
-      return {
-        success: false,
-        error: errorMsg,
-        latencyMs: Date.now() - startTime,
-        mode: 'sandbox',
-        smtpAccountId: activeSmtp.id,
-        smtpSender: fromEmail
-      };
-    }
-
-    // Save into simulated_inbox
-    try {
-      const db = getDb();
-      db.prepare(`
-        INSERT INTO simulated_inbox (campaign_id, recipient_email, recipient_name, college, subject, body_html, from_address, received_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `).run(
-        campaignId,
-        to,
-        recipientName || student.name || 'Candidate',
-        student.college || '',
-        subject,
-        html,
-        `"${fromName}" <${fromEmail}>`
-      );
-    } catch (err) {
-      console.error('Error saving to simulated inbox:', err.message);
-    }
-
-    if (activeSmtp.id) {
-      smtpPool.recordSendSuccess(activeSmtp.id);
-    }
-
-    return {
-      success: true,
-      messageId: `<sim-${Date.now()}-${Math.random().toString(36).substring(7)}@aparaitech.org>`,
-      latencyMs: Date.now() - startTime,
-      mode: 'sandbox',
-      smtpAccountId: activeSmtp.id,
-      smtpSender: fromEmail
-    };
-  }
-
-  // 2. LIVE SMTP MODE
+  // Live SMTP mode
   try {
     const transporter = nodemailer.createTransport({
       host: activeSmtp.host || 'smtp.gmail.com',

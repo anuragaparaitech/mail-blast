@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const db = getDb();
-    const updates = req.body; // e.g. { mailer_mode: 'sandbox', send_delay_ms: 300, smtp_pass: '...', ... }
+    const updates = req.body;
 
     const updateStmt = db.prepare(`
       INSERT INTO settings (key, value, updated_at)

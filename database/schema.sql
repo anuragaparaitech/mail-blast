@@ -90,20 +90,6 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table: simulated_inbox (Stores sent emails in sandbox mode for verification)
-CREATE TABLE IF NOT EXISTS simulated_inbox (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    campaign_id INTEGER,
-    recipient_email TEXT NOT NULL,
-    recipient_name TEXT NOT NULL,
-    college TEXT,
-    subject TEXT NOT NULL,
-    body_html TEXT NOT NULL,
-    from_address TEXT,
-    received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_read INTEGER DEFAULT 0
-);
-
 -- Table: smtp_accounts (Multi-SMTP Senders Pool for Load Balancing & Auto-Rotation)
 CREATE TABLE IF NOT EXISTS smtp_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

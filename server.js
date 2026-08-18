@@ -43,7 +43,6 @@ app.use('/api/templates', require('./routes/templates'));
 app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/settings', require('./routes/settings'));
-app.use('/api/inbox', require('./routes/inbox'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

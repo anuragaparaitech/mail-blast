@@ -98,10 +98,6 @@ const BlastMonitorView = {
           <p>Campaign #${this.state.campaignId}: <strong>${this.state.campaign.title}</strong></p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary btn-sm" onclick="app.navigate('inbox', { campaign_id: ${this.state.campaignId} })">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-            <span>Inspect Mailbox</span>
-          </button>
           <button class="btn btn-secondary btn-sm" onclick="HistoryView.viewCampaignDetail(${this.state.campaignId})">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span>Campaign Reports</span>

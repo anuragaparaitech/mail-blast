@@ -314,11 +314,6 @@ function seedDatabase() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-2 days'), 1)
     `);
 
-    const simInboxStmt = db.prepare(`
-      INSERT INTO simulated_inbox (campaign_id, recipient_email, recipient_name, college, subject, body_html, from_address, received_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'Aparaitech Recruitment Team <recruitment@aparaitech.org>', datetime('now', '-2 days'))
-    `);
-
     sampleStudents.forEach((student, index) => {
       const isFailed = (index === 4); // Fail one for demonstration
       const status = isFailed ? 'failed' : 'sent';
@@ -327,16 +322,6 @@ function seedDatabase() {
 
       recipStmt.run(campId, student.id, student.name, student.email, student.college, student.phone, status, latency, errorMsg);
 
-      if (!isFailed) {
-        simInboxStmt.run(
-          campId,
-          student.email,
-          student.name,
-          student.college,
-          `Campus Placement & Career Opportunity at Aparaitech Software for ${student.name}`,
-          templates[0].body_html.replace(/\{Name\}/g, student.name).replace(/\{College\}/g, student.college)
-        );
-      }
     });
 
     console.log(`✅ Seeded sample past campaign with ${sampleStudents.length} recipients.`);

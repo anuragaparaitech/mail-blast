@@ -46,35 +46,6 @@ const SettingsView = {
           </div>
         </div>
 
-        <!-- 1. Delivery Mode Card -->
-        <div class="card" style="margin-bottom: 24px;">
-          <div class="card-header">
-            <h3 class="card-title">1. Email Delivery Engine Mode</h3>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <label style="border: 2px solid ${s.mailer_mode === 'sandbox' ? 'var(--brand-sapphire)' : 'var(--border-light)'}; border-radius: var(--radius-md); padding: 18px; cursor: pointer; background: ${s.mailer_mode === 'sandbox' ? '#eff6ff' : '#ffffff'};">
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <input type="radio" name="mailer_mode_radio" value="sandbox" ${s.mailer_mode === 'sandbox' ? 'checked' : ''} onchange="SettingsView.handleModeChange(this.value)" />
-                <strong style="font-size: 0.98rem; color: var(--text-primary);">High-Fidelity Sandbox / Simulator (Testing Mode)</strong>
-              </div>
-              <p style="color: var(--text-secondary); font-size: 0.84rem; line-height: 1.5; margin-left: 24px;">
-                Simulates sending latency, logs messages to the <strong>Student Mailbox Inspector</strong>, and protects your real SMTP limits.
-              </p>
-            </label>
-
-            <label style="border: 2px solid ${s.mailer_mode === 'smtp' ? 'var(--brand-sapphire)' : 'var(--border-light)'}; border-radius: var(--radius-md); padding: 18px; cursor: pointer; background: ${s.mailer_mode === 'smtp' ? '#eff6ff' : '#ffffff'};">
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <input type="radio" name="mailer_mode_radio" value="smtp" ${s.mailer_mode === 'smtp' ? 'checked' : ''} onchange="SettingsView.handleModeChange(this.value)" />
-                <strong style="font-size: 0.98rem; color: var(--text-primary);">Live Multi-SMTP Senders Pool (Production Mode)</strong>
-              </div>
-              <p style="color: var(--text-secondary); font-size: 0.84rem; line-height: 1.5; margin-left: 24px;">
-                Sends live emails via your saved SMTP pool with <strong>automatic sender rotation and daily limit switching</strong>.
-              </p>
-            </label>
-          </div>
-        </div>
-
         <!-- 2. Multi-SMTP Sender Accounts Pool Card -->
         <div class="card" style="margin-bottom: 24px;">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -126,18 +97,13 @@ const SettingsView = {
             <h3 class="card-title">3. Blast Throttling &amp; Speed Controls</h3>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div>
             <div class="form-group">
               <label class="form-label">Delay Between Each Email: <span id="delayValText" style="color: var(--brand-sapphire); font-weight: 700;">${s.send_delay_ms || 300} ms</span></label>
               <input type="range" id="sendDelayRange" class="form-range" min="50" max="2000" step="50" value="${s.send_delay_ms || 300}" oninput="document.getElementById('delayValText').textContent = this.value + ' ms'" style="width: 100%; accent-color: var(--brand-sapphire);" />
               <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Controls sending speed (~${Math.round(1000 / (parseInt(s.send_delay_ms || 300, 10)))} emails/sec) to avoid provider rate limits.</p>
             </div>
 
-            <div class="form-group">
-              <label class="form-label">Simulated Failure Rate (Sandbox Mode): <span id="failValText" style="color: var(--color-danger); font-weight: 700;">${s.simulate_failure_rate || 5}%</span></label>
-              <input type="range" id="failRateRange" min="0" max="30" step="1" value="${s.simulate_failure_rate || 5}" oninput="document.getElementById('failValText').textContent = this.value + '%'" style="width: 100%; accent-color: var(--color-danger);" />
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Injects simulated bounce/DNS failures in sandbox mode to demonstrate the "1-Click Retry" feature.</p>
-            </div>
           </div>
         </div>
 
@@ -257,18 +223,6 @@ const SettingsView = {
     `;
   },
 
-  async handleModeChange(mode) {
-    try {
-      await api.updateSettings({ mailer_mode: mode });
-      this.state.settings.mailer_mode = mode;
-      app.showToast(`Switched delivery mode to ${mode === 'smtp' ? 'Live Multi-SMTP' : 'Sandbox Simulator'}`, 'success');
-      this.render(document.getElementById('viewContainer'));
-      app.refreshEnvironmentBadge();
-    } catch (e) {
-      app.showToast('Failed to switch mode: ' + e.message, 'error');
-    }
-  },
-
   async handleStrategyChange(strategy) {
     try {
       await api.updateSettings({ smtp_rotation_strategy: strategy });
@@ -281,10 +235,9 @@ const SettingsView = {
 
   async saveGeneralSettings() {
     const payload = {
-      mailer_mode: document.querySelector('input[name="mailer_mode_radio"]:checked')?.value || 'sandbox',
+      mailer_mode: 'smtp',
       smtp_rotation_strategy: document.getElementById('rotationStrategySelect')?.value || 'round_robin',
       send_delay_ms: document.getElementById('sendDelayRange')?.value || 300,
-      simulate_failure_rate: document.getElementById('failRateRange')?.value || 5,
       company_name: document.getElementById('companyNameInput')?.value || 'Aparaitech Software',
       company_website: document.getElementById('companyWebsiteInput')?.value || 'https://aparaitech.org',
       company_location: document.getElementById('companyLocationInput')?.value || 'Baramati (Pune) & Bengaluru, India',

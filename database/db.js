@@ -81,7 +81,7 @@ function getDb() {
 
 function initDefaultSettings(database) {
   const defaultSettings = [
-    { key: 'mailer_mode', value: 'sandbox' }, // 'sandbox' or 'smtp'
+    { key: 'mailer_mode', value: 'smtp' },
     { key: 'smtp_rotation_strategy', value: 'round_robin' }, // 'round_robin', 'auto_failover', 'single'
     { key: 'smtp_host', value: 'smtp.gmail.com' },
     { key: 'smtp_port', value: '587' },
@@ -92,7 +92,6 @@ function initDefaultSettings(database) {
     { key: 'from_email', value: 'recruitment@aparaitech.org' },
     { key: 'reply_to', value: 'careers@aparaitech.org' },
     { key: 'send_delay_ms', value: '350' }, // Delay between emails in blast
-    { key: 'simulate_failure_rate', value: '5' }, // 5% simulated failure for testing diagnostics
     { key: 'company_name', value: 'Aparaitech Software' },
     { key: 'company_website', value: 'https://aparaitech.org' },
     { key: 'company_logo', value: '/assets/logo.svg' },

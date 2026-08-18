@@ -171,7 +171,7 @@ e:/Mail blast/
 | **Database Schema** | [`docs/DATABASE_SCHEMA.md`](file:///e:/Mail%20blast/docs/DATABASE_SCHEMA.md) | Entity relationship diagram, data dictionaries, constraints, and indexes |
 | **Installation Guide** | [`docs/INSTALLATION.md`](file:///e:/Mail%20blast/docs/INSTALLATION.md) | Step-by-step setup, SMTP configuration, PM2 production deployment, and Nginx reverse proxy |
 | **User Documentation** | [`docs/USER_GUIDE.md`](file:///e:/Mail%20blast/docs/USER_GUIDE.md) | Recruiter manual for managing student pools, bulk uploads, templates, live blasts, and retry |
-| **Live Working Demo** | `http://localhost:3000` | Fully functional local instance with seed data and sandbox mode |
+| **Live Working Demo** | `http://localhost:3000` | Fully functional local instance with seed data and SMTP delivery |
 | **5-Minute Guided Tour** | `#demo-tour` in App | Built-in interactive demonstration showcase with chapter markers and presenter voiceover script |
 
 ---
