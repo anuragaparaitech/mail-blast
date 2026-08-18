@@ -169,8 +169,9 @@ router.post('/', async (req, res) => {
 
         const mongoResults = await mongo.collection('students').find(mongoFilter).toArray();
         if (mongoResults && mongoResults.length > 0) {
-          targetStudents = mongoResults.map((s, idx) => ({
-            id: s.sqlite_id || idx + 1,
+          targetStudents = mongoResults.map((s) => ({
+            id: typeof s.sqlite_id === 'number' ? s.sqlite_id : null,
+            sqlite_id: typeof s.sqlite_id === 'number' ? s.sqlite_id : null,
             mongo_id: String(s._id),
             name: s.name || 'Candidate',
             email: s.email,
@@ -242,7 +243,8 @@ router.post('/', async (req, res) => {
 
     const campaignId = result.lastInsertRowid;
 
-    // Insert Recipients in a transaction
+    // Insert Recipients in a transaction (with safe foreign key resolution)
+    const checkStudentStmt = db.prepare('SELECT id FROM students WHERE id = ?');
     const insertRecipStmt = db.prepare(`
       INSERT INTO campaign_recipients (campaign_id, student_id, recipient_name, recipient_email, recipient_college, recipient_phone, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
@@ -250,9 +252,18 @@ router.post('/', async (req, res) => {
 
     const insertTx = db.transaction(() => {
       for (const student of targetStudents) {
+        let validStudentId = null;
+        if (student.sqlite_id && typeof student.sqlite_id === 'number') {
+          const found = checkStudentStmt.get(student.sqlite_id);
+          if (found) validStudentId = student.sqlite_id;
+        } else if (student.id && typeof student.id === 'number') {
+          const found = checkStudentStmt.get(student.id);
+          if (found) validStudentId = student.id;
+        }
+
         insertRecipStmt.run(
           campaignId,
-          student.id || null,
+          validStudentId,
           student.name,
           student.email,
           student.college,
